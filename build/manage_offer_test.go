@@ -3,8 +3,8 @@ package build
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stellar/go-stellar-base"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 var _ = Describe("ManageOffer", func() {

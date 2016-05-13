@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/stellar/go-stellar-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
 )
 
 // This file contains helpers for working with xdr.Asset structs

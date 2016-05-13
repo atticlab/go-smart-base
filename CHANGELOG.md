@@ -19,4 +19,4 @@ bumps.  A breaking change will get clearly notified in this log.
 - `build` package learned `ClearData()` and `SetData()` to configure ManageData operations.
 
 
-[Unreleased]: https://github.com/stellar/go-stellar-base/compare/df92a863a...master
+[Unreleased]: https://bitbucket.org/atticlab/go-smart-base/compare/df92a863a...master

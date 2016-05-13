@@ -3,8 +3,7 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // CreateAccount groups the creation of a new CreateAccountBuilder with a call
@@ -54,9 +53,9 @@ func (m Destination) MutateCreateAccount(o *xdr.CreateAccountOp) error {
 	return setAccountId(m.AddressOrSeed, &o.Destination)
 }
 
-// MutateCreateAccount for NativeAmount sets the CreateAccountOp's
-// StartingBalance field
-func (m NativeAmount) MutateCreateAccount(o *xdr.CreateAccountOp) (err error) {
-	o.StartingBalance, err = amount.Parse(m.Amount)
+// MutateCreateAccount for AccountType sets the CreateAccountOp's
+// AccountType field
+func (m AccountType) MutateCreateAccount(o *xdr.CreateAccountOp) (err error) {
+	o.AccountType = xdr.Uint32(m)
 	return
 }

@@ -10,12 +10,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stellar/go-stellar-base/build"
+	"bitbucket.org/atticlab/go-smart-base/build"
 )
 
 func TestHorizon(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Package: github.com/stellar/go-stellar-base/horizon")
+	RunSpecs(t, "Package: bitbucket.org/atticlab/go-smart-base/horizon")
 }
 
 var _ build.SequenceProvider = TestHorizonClient

@@ -1,4 +1,4 @@
-gem 'xdrgen', path: File.expand_path("~/src/stellar/xdrgen")
+gem 'xdrgen', git: 'git@github.com:stellar/xdrgen.git'
 gem 'pry'
 gem 'octokit'
 gem 'netrc'

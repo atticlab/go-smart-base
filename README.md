@@ -1,5 +1,5 @@
 # Go Stellar Base
-[![Build Status](https://travis-ci.org/stellar/go-stellar-base.svg?branch=master)](https://travis-ci.org/stellar/go-stellar-base)
+[![Build Status](https://travis-ci.org/stellar/go-smart-base.svg?branch=master)](https://travis-ci.org/stellar/go-smart-base)
 
 *STATUS:  This library is currently in alpha testing.  It has support reading/writing xdr, and can sign and hash byte slices in accordance with the stellar protocol, but does not yet have the necessary helpers to make constructing valid transactions easy.*
 
@@ -10,7 +10,7 @@ to read, write, hash, and sign the xdr structures that are used in stellar-core.
 
 
 ```shell
-go get github.com/stellar/go-stellar-base
+go get bitbucket.org/atticlab/go-smart-base
 ```
 
 ## Usage

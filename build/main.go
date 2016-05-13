@@ -11,9 +11,9 @@ import (
 	"errors"
 	"math"
 
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/network"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/amount"
+	"bitbucket.org/atticlab/go-smart-base/network"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 const (
@@ -141,6 +141,8 @@ type Limit Amount
 // MasterWeight is a mutator that sets account's master weight
 type MasterWeight uint32
 
+type AccountType uint32
+
 // MaxLimit represents the maximum value that can be passed as trutline Limit
 var MaxLimit = Limit(amount.String(math.MaxInt64))
 
@@ -227,8 +229,9 @@ type ClearFlag int32
 
 // Signer is a mutator capable of adding, updating and deleting account signer
 type Signer struct {
-	PublicKey string
-	Weight    uint32
+	PublicKey 	string
+	Weight    	uint32
+	SignerType 	uint32
 }
 
 // SourceAccount is a mutator capable of setting the source account on

@@ -306,21 +306,11 @@ type Thresholds [4]byte
 //
 type String32 string
 
-// XDRMaxSize implements the Sized interface for String32
-func (e String32) XDRMaxSize() int {
-	return 32
-}
-
 // String64 is an XDR Typedef defines as:
 //
 //   typedef string string64<64>;
 //
 type String64 string
-
-// XDRMaxSize implements the Sized interface for String64
-func (e String64) XDRMaxSize() int {
-	return 64
-}
 
 // SequenceNumber is an XDR Typedef defines as:
 //
@@ -333,6 +323,84 @@ type SequenceNumber Uint64
 //   typedef opaque DataValue<64>;
 //
 type DataValue []byte
+
+// AccountType is an XDR Enum defines as:
+//
+//   enum AccountType
+//    {
+//        ACCOUNT_USER = 0,
+//        ACCOUNT_MERCHANT = 1,
+//        ACCOUNT_DISTRIBUTION_AGENT = 2,
+//        ACCOUNT_SETTLEMENT_AGENT = 3,
+//        ACCOUNT_EXCHANGE_AGENT = 4
+//    };
+//
+type AccountType int32
+
+const (
+	AccountTypeAccountUser              AccountType = 0
+	AccountTypeAccountMerchant          AccountType = 1
+	AccountTypeAccountDistributionAgent AccountType = 2
+	AccountTypeAccountSettlementAgent   AccountType = 3
+	AccountTypeAccountExchangeAgent     AccountType = 4
+)
+
+var accountTypeMap = map[int32]string{
+	0: "AccountTypeAccountUser",
+	1: "AccountTypeAccountMerchant",
+	2: "AccountTypeAccountDistributionAgent",
+	3: "AccountTypeAccountSettlementAgent",
+	4: "AccountTypeAccountExchangeAgent",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for AccountType
+func (e AccountType) ValidEnum(v int32) bool {
+	_, ok := accountTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e AccountType) String() string {
+	name, _ := accountTypeMap[int32(e)]
+	return name
+}
+
+// SignerType is an XDR Enum defines as:
+//
+//   enum SignerType
+//    {
+//        SIGNER_GENERAL = 0,
+//        SIGNER_ADMIN = 1,
+//        SIGNER_EMISSION = 2
+//    };
+//
+type SignerType int32
+
+const (
+	SignerTypeSignerGeneral  SignerType = 0
+	SignerTypeSignerAdmin    SignerType = 1
+	SignerTypeSignerEmission SignerType = 2
+)
+
+var signerTypeMap = map[int32]string{
+	0: "SignerTypeSignerGeneral",
+	1: "SignerTypeSignerAdmin",
+	2: "SignerTypeSignerEmission",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for SignerType
+func (e SignerType) ValidEnum(v int32) bool {
+	_, ok := signerTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e SignerType) String() string {
+	name, _ := signerTypeMap[int32(e)]
+	return name
+}
 
 // AssetType is an XDR Enum defines as:
 //
@@ -617,11 +685,13 @@ func (e LedgerEntryType) String() string {
 //    {
 //        AccountID pubKey;
 //        uint32 weight; // really only need 1byte
+//        uint32 signerType;
 //    };
 //
 type Signer struct {
-	PubKey AccountId
-	Weight Uint32
+	PubKey     AccountId
+	Weight     Uint32
+	SignerType Uint32
 }
 
 // AccountFlags is an XDR Enum defines as:
@@ -719,11 +789,12 @@ func NewAccountEntryExt(v int32, value interface{}) (result AccountEntryExt, err
 //
 //        string32 homeDomain; // can be used for reverse federation and memo lookup
 //
+//        uint32 accountType;
 //        // fields used for signatures
 //        // thresholds stores unsigned bytes: [weight of master|low|medium|high]
 //        Thresholds thresholds;
 //
-//        Signer signers<20>; // possible signers for this account
+//        Signer signers<200>; // possible signers for this account
 //
 //        // reserved for future use
 //        union switch (int v)
@@ -742,8 +813,9 @@ type AccountEntry struct {
 	InflationDest *AccountId
 	Flags         Uint32
 	HomeDomain    String32
+	AccountType   Uint32
 	Thresholds    Thresholds
-	Signers       []Signer `xdrmaxsize:"20"`
+	Signers       []Signer
 	Ext           AccountEntryExt
 }
 
@@ -1381,12 +1453,12 @@ func (e OperationType) String() string {
 //   struct CreateAccountOp
 //    {
 //        AccountID destination; // account to create
-//        int64 startingBalance; // amount they end up with
+//        uint32 accountType; // amount they end up with
 //    };
 //
 type CreateAccountOp struct {
-	Destination     AccountId
-	StartingBalance Int64
+	Destination AccountId
+	AccountType Uint32
 }
 
 // PaymentOp is an XDR Struct defines as:
@@ -1426,7 +1498,7 @@ type PathPaymentOp struct {
 	Destination AccountId
 	DestAsset   Asset
 	DestAmount  Int64
-	Path        []Asset `xdrmaxsize:"5"`
+	Path        []Asset
 }
 
 // ManageOfferOp is an XDR Struct defines as:
@@ -2430,7 +2502,7 @@ type Transaction struct {
 	SeqNum        SequenceNumber
 	TimeBounds    *TimeBounds
 	Memo          Memo
-	Operations    []Operation `xdrmaxsize:"100"`
+	Operations    []Operation
 	Ext           TransactionExt
 }
 
@@ -2444,7 +2516,7 @@ type Transaction struct {
 //
 type TransactionEnvelope struct {
 	Tx         Transaction
-	Signatures []DecoratedSignature `xdrmaxsize:"20"`
+	Signatures []DecoratedSignature
 }
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -2485,17 +2557,21 @@ type ClaimOfferAtom struct {
 //        CREATE_ACCOUNT_UNDERFUNDED = -2, // not enough funds in source account
 //        CREATE_ACCOUNT_LOW_RESERVE =
 //            -3, // would create an account below the min reserve
-//        CREATE_ACCOUNT_ALREADY_EXIST = -4 // account already exists
+//        CREATE_ACCOUNT_ALREADY_EXIST = -4, // account already exists
+//        CREATE_ACCOUNT_NOT_AUTHORIZED_TYPE = -5,
+//        CREATE_ACCOUNT_WRONG_TYPE = -6
 //    };
 //
 type CreateAccountResultCode int32
 
 const (
-	CreateAccountResultCodeCreateAccountSuccess      CreateAccountResultCode = 0
-	CreateAccountResultCodeCreateAccountMalformed    CreateAccountResultCode = -1
-	CreateAccountResultCodeCreateAccountUnderfunded  CreateAccountResultCode = -2
-	CreateAccountResultCodeCreateAccountLowReserve   CreateAccountResultCode = -3
-	CreateAccountResultCodeCreateAccountAlreadyExist CreateAccountResultCode = -4
+	CreateAccountResultCodeCreateAccountSuccess           CreateAccountResultCode = 0
+	CreateAccountResultCodeCreateAccountMalformed         CreateAccountResultCode = -1
+	CreateAccountResultCodeCreateAccountUnderfunded       CreateAccountResultCode = -2
+	CreateAccountResultCodeCreateAccountLowReserve        CreateAccountResultCode = -3
+	CreateAccountResultCodeCreateAccountAlreadyExist      CreateAccountResultCode = -4
+	CreateAccountResultCodeCreateAccountNotAuthorizedType CreateAccountResultCode = -5
+	CreateAccountResultCodeCreateAccountWrongType         CreateAccountResultCode = -6
 )
 
 var createAccountResultCodeMap = map[int32]string{
@@ -2504,6 +2580,8 @@ var createAccountResultCodeMap = map[int32]string{
 	-2: "CreateAccountResultCodeCreateAccountUnderfunded",
 	-3: "CreateAccountResultCodeCreateAccountLowReserve",
 	-4: "CreateAccountResultCodeCreateAccountAlreadyExist",
+	-5: "CreateAccountResultCodeCreateAccountNotAuthorizedType",
+	-6: "CreateAccountResultCodeCreateAccountWrongType",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3181,7 +3259,8 @@ func (u ManageOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok boo
 //        SET_OPTIONS_UNKNOWN_FLAG = -6,           // can't set an unknown flag
 //        SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
 //        SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
-//        SET_OPTIONS_INVALID_HOME_DOMAIN = -9     // malformed home domain
+//        SET_OPTIONS_INVALID_HOME_DOMAIN = -9,     // malformed home domain
+//        SET_OPTIONS_BAD_SIGNER_TYPE = -10        // only bank can add emission/admin signer
 //    };
 //
 type SetOptionsResultCode int32
@@ -3197,19 +3276,21 @@ const (
 	SetOptionsResultCodeSetOptionsThresholdOutOfRange SetOptionsResultCode = -7
 	SetOptionsResultCodeSetOptionsBadSigner           SetOptionsResultCode = -8
 	SetOptionsResultCodeSetOptionsInvalidHomeDomain   SetOptionsResultCode = -9
+	SetOptionsResultCodeSetOptionsBadSignerType       SetOptionsResultCode = -10
 )
 
 var setOptionsResultCodeMap = map[int32]string{
-	0:  "SetOptionsResultCodeSetOptionsSuccess",
-	-1: "SetOptionsResultCodeSetOptionsLowReserve",
-	-2: "SetOptionsResultCodeSetOptionsTooManySigners",
-	-3: "SetOptionsResultCodeSetOptionsBadFlags",
-	-4: "SetOptionsResultCodeSetOptionsInvalidInflation",
-	-5: "SetOptionsResultCodeSetOptionsCantChange",
-	-6: "SetOptionsResultCodeSetOptionsUnknownFlag",
-	-7: "SetOptionsResultCodeSetOptionsThresholdOutOfRange",
-	-8: "SetOptionsResultCodeSetOptionsBadSigner",
-	-9: "SetOptionsResultCodeSetOptionsInvalidHomeDomain",
+	0:   "SetOptionsResultCodeSetOptionsSuccess",
+	-1:  "SetOptionsResultCodeSetOptionsLowReserve",
+	-2:  "SetOptionsResultCodeSetOptionsTooManySigners",
+	-3:  "SetOptionsResultCodeSetOptionsBadFlags",
+	-4:  "SetOptionsResultCodeSetOptionsInvalidInflation",
+	-5:  "SetOptionsResultCodeSetOptionsCantChange",
+	-6:  "SetOptionsResultCodeSetOptionsUnknownFlag",
+	-7:  "SetOptionsResultCodeSetOptionsThresholdOutOfRange",
+	-8:  "SetOptionsResultCodeSetOptionsBadSigner",
+	-9:  "SetOptionsResultCodeSetOptionsInvalidHomeDomain",
+	-10: "SetOptionsResultCodeSetOptionsBadSignerType",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4635,7 +4716,7 @@ func NewStellarValueExt(v int32, value interface{}) (result StellarValueExt, err
 type StellarValue struct {
 	TxSetHash Hash
 	CloseTime Uint64
-	Upgrades  []UpgradeType `xdrmaxsize:"6"`
+	Upgrades  []UpgradeType
 	Ext       StellarValueExt
 }
 
@@ -4740,22 +4821,19 @@ type LedgerHeader struct {
 //   enum LedgerUpgradeType
 //    {
 //        LEDGER_UPGRADE_VERSION = 1,
-//        LEDGER_UPGRADE_BASE_FEE = 2,
-//        LEDGER_UPGRADE_MAX_TX_SET_SIZE = 3
+//        LEDGER_UPGRADE_MAX_TX_SET_SIZE = 2
 //    };
 //
 type LedgerUpgradeType int32
 
 const (
 	LedgerUpgradeTypeLedgerUpgradeVersion      LedgerUpgradeType = 1
-	LedgerUpgradeTypeLedgerUpgradeBaseFee      LedgerUpgradeType = 2
-	LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize LedgerUpgradeType = 3
+	LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize LedgerUpgradeType = 2
 )
 
 var ledgerUpgradeTypeMap = map[int32]string{
 	1: "LedgerUpgradeTypeLedgerUpgradeVersion",
-	2: "LedgerUpgradeTypeLedgerUpgradeBaseFee",
-	3: "LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize",
+	2: "LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4777,8 +4855,6 @@ func (e LedgerUpgradeType) String() string {
 //    {
 //    case LEDGER_UPGRADE_VERSION:
 //        uint32 newLedgerVersion; // update ledgerVersion
-//    case LEDGER_UPGRADE_BASE_FEE:
-//        uint32 newBaseFee; // update baseFee
 //    case LEDGER_UPGRADE_MAX_TX_SET_SIZE:
 //        uint32 newMaxTxSetSize; // update maxTxSetSize
 //    };
@@ -4786,7 +4862,6 @@ func (e LedgerUpgradeType) String() string {
 type LedgerUpgrade struct {
 	Type             LedgerUpgradeType
 	NewLedgerVersion *Uint32
-	NewBaseFee       *Uint32
 	NewMaxTxSetSize  *Uint32
 }
 
@@ -4802,8 +4877,6 @@ func (u LedgerUpgrade) ArmForSwitch(sw int32) (string, bool) {
 	switch LedgerUpgradeType(sw) {
 	case LedgerUpgradeTypeLedgerUpgradeVersion:
 		return "NewLedgerVersion", true
-	case LedgerUpgradeTypeLedgerUpgradeBaseFee:
-		return "NewBaseFee", true
 	case LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize:
 		return "NewMaxTxSetSize", true
 	}
@@ -4821,13 +4894,6 @@ func NewLedgerUpgrade(aType LedgerUpgradeType, value interface{}) (result Ledger
 			return
 		}
 		result.NewLedgerVersion = &tv
-	case LedgerUpgradeTypeLedgerUpgradeBaseFee:
-		tv, ok := value.(Uint32)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint32")
-			return
-		}
-		result.NewBaseFee = &tv
 	case LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize:
 		tv, ok := value.(Uint32)
 		if !ok {
@@ -4858,31 +4924,6 @@ func (u LedgerUpgrade) GetNewLedgerVersion() (result Uint32, ok bool) {
 
 	if armName == "NewLedgerVersion" {
 		result = *u.NewLedgerVersion
-		ok = true
-	}
-
-	return
-}
-
-// MustNewBaseFee retrieves the NewBaseFee value from the union,
-// panicing if the value is not set.
-func (u LedgerUpgrade) MustNewBaseFee() Uint32 {
-	val, ok := u.GetNewBaseFee()
-
-	if !ok {
-		panic("arm NewBaseFee is not set")
-	}
-
-	return val
-}
-
-// GetNewBaseFee retrieves the NewBaseFee value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u LedgerUpgrade) GetNewBaseFee() (result Uint32, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "NewBaseFee" {
-		result = *u.NewBaseFee
 		ok = true
 	}
 
@@ -5318,7 +5359,7 @@ const MaxTxPerLedger = 5000
 //
 type TransactionSet struct {
 	PreviousLedgerHash Hash
-	Txs                []TransactionEnvelope `xdrmaxsize:"5000"`
+	Txs                []TransactionEnvelope
 }
 
 // TransactionResultPair is an XDR Struct defines as:
@@ -5342,7 +5383,7 @@ type TransactionResultPair struct {
 //    };
 //
 type TransactionResultSet struct {
-	Results []TransactionResultPair `xdrmaxsize:"5000"`
+	Results []TransactionResultPair
 }
 
 // TransactionHistoryEntryExt is an XDR NestedUnion defines as:
@@ -5977,7 +6018,7 @@ func (e ErrorCode) String() string {
 //
 type Error struct {
 	Code ErrorCode
-	Msg  string `xdrmaxsize:"100"`
+	Msg  string
 }
 
 // AuthCert is an XDR Struct defines as:
@@ -6015,7 +6056,7 @@ type Hello struct {
 	OverlayVersion    Uint32
 	OverlayMinVersion Uint32
 	NetworkId         Hash
-	VersionStr        string `xdrmaxsize:"100"`
+	VersionStr        string
 	ListeningPort     int32
 	PeerId            NodeId
 	Cert              AuthCert

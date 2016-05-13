@@ -1,8 +1,8 @@
 package xdr_test
 
 import (
-	"github.com/stellar/go-stellar-base"
-	. "github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base"
+	. "bitbucket.org/atticlab/go-smart-base/xdr"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

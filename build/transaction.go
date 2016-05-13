@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stellar/go-stellar-base/hash"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/hash"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // Transaction groups the creation of a new TransactionBuilder with a call
@@ -172,7 +172,7 @@ func (m CreateAccountBuilder) MutateTransaction(o *TransactionBuilder) error {
 func (m Defaults) MutateTransaction(o *TransactionBuilder) error {
 
 	if o.TX.Fee == 0 {
-		o.TX.Fee = xdr.Uint32(100 * len(o.TX.Operations))
+		o.TX.Fee = xdr.Uint32(0 * len(o.TX.Operations))
 	}
 
 	if o.NetworkID == [32]byte{} {

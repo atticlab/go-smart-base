@@ -6,7 +6,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // Parse  calculates and returns the best rational approximation of the given real number price.

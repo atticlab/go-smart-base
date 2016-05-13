@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // AllowTrust groups the creation of a new AllowTrustBuilder with a call to Mutate.

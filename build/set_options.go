@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // SetOptions groups the creation of a new SetOptions with a call to Mutate.
@@ -87,19 +87,20 @@ func (m MasterWeight) MutateTransaction(t *TransactionBuilder) error {
 }
 
 // AddSigner creates Signer mutator that sets account's signer
-func AddSigner(publicKey string, weight uint32) Signer {
-	return Signer{publicKey, weight}
+func AddSigner(publicKey string, weight uint32, signerType uint32) Signer {
+	return Signer{publicKey, weight, signerType}
 }
 
 // RemoveSigner creates Signer mutator that removes account's signer
 func RemoveSigner(publicKey string) Signer {
-	return Signer{publicKey, 0}
+	return Signer{publicKey, 0, 0}
 }
 
 // MutateSetOptions for Signer sets the SetOptionsOp's signer field
 func (m Signer) MutateSetOptions(o *xdr.SetOptionsOp) (err error) {
 	var signer xdr.Signer
 	signer.Weight = xdr.Uint32(m.Weight)
+	signer.SignerType = xdr.Uint32(m.SignerType)
 	err = setAccountId(m.PublicKey, &signer.PubKey)
 	o.Signer = &signer
 	return

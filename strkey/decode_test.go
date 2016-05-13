@@ -1,7 +1,7 @@
 package strkey_test
 
 import (
-	. "github.com/stellar/go-stellar-base/strkey"
+	. "bitbucket.org/atticlab/go-smart-base/strkey"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

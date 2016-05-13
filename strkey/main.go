@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stellar/go-stellar-base/crc16"
+	"bitbucket.org/atticlab/go-smart-base/crc16"
 )
 
 var ErrInvalidVersionByte = errors.New("invalid version byte")

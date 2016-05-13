@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	b "github.com/stellar/go-stellar-base/build"
-	"github.com/stellar/go-stellar-base/hash"
-	"github.com/stellar/go-stellar-base/keypair"
-	"github.com/stellar/go-stellar-base/xdr"
+	b "bitbucket.org/atticlab/go-smart-base/build"
+	"bitbucket.org/atticlab/go-smart-base/hash"
+	"bitbucket.org/atticlab/go-smart-base/keypair"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // ExampleBuildTransaction creates and signs a simple transaction using the build package.
