@@ -4427,6 +4427,131 @@ func (u OperationResult) GetTr() (result OperationResultTr, ok bool) {
 	return
 }
 
+// OperationFeeType is an XDR Enum defines as:
+//
+//   enum OperationFeeType
+//    {
+//        opFEE_NONE = 0,
+//        opFEE_CHARGED = 1
+//    };
+//
+type OperationFeeType int32
+
+const (
+	OperationFeeTypeOpFeeNone    OperationFeeType = 0
+	OperationFeeTypeOpFeeCharged OperationFeeType = 1
+)
+
+var operationFeeTypeMap = map[int32]string{
+	0: "OperationFeeTypeOpFeeNone",
+	1: "OperationFeeTypeOpFeeCharged",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for OperationFeeType
+func (e OperationFeeType) ValidEnum(v int32) bool {
+	_, ok := operationFeeTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e OperationFeeType) String() string {
+	name, _ := operationFeeTypeMap[int32(e)]
+	return name
+}
+
+// OperationFeeFee is an XDR NestedStruct defines as:
+//
+//   struct
+//        {
+//            Asset asset;
+//            int64 amount;
+//        }
+//
+type OperationFeeFee struct {
+	Asset  Asset
+	Amount Int64
+}
+
+// OperationFee is an XDR Union defines as:
+//
+//   union OperationFee switch (OperationFeeType type)
+//    {
+//    case opFEE_NONE:
+//        void;
+//    case opFEE_CHARGED:
+//        struct
+//        {
+//            Asset asset;
+//            int64 amount;
+//        } fee;
+//    };
+//
+type OperationFee struct {
+	Type OperationFeeType
+	Fee  *OperationFeeFee
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u OperationFee) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of OperationFee
+func (u OperationFee) ArmForSwitch(sw int32) (string, bool) {
+	switch OperationFeeType(sw) {
+	case OperationFeeTypeOpFeeNone:
+		return "", true
+	case OperationFeeTypeOpFeeCharged:
+		return "Fee", true
+	}
+	return "-", false
+}
+
+// NewOperationFee creates a new  OperationFee.
+func NewOperationFee(aType OperationFeeType, value interface{}) (result OperationFee, err error) {
+	result.Type = aType
+	switch OperationFeeType(aType) {
+	case OperationFeeTypeOpFeeNone:
+		// void
+	case OperationFeeTypeOpFeeCharged:
+		tv, ok := value.(OperationFeeFee)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be OperationFeeFee")
+			return
+		}
+		result.Fee = &tv
+	}
+	return
+}
+
+// MustFee retrieves the Fee value from the union,
+// panicing if the value is not set.
+func (u OperationFee) MustFee() OperationFeeFee {
+	val, ok := u.GetFee()
+
+	if !ok {
+		panic("arm Fee is not set")
+	}
+
+	return val
+}
+
+// GetFee retrieves the Fee value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationFee) GetFee() (result OperationFeeFee, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Fee" {
+		result = *u.Fee
+		ok = true
+	}
+
+	return
+}
+
 // TransactionResultCode is an XDR Enum defines as:
 //
 //   enum TransactionResultCode
@@ -4619,8 +4744,7 @@ func NewTransactionResultExt(v int32, value interface{}) (result TransactionResu
 //
 //   struct TransactionResult
 //    {
-//        int64 feeCharged; // actual fee charged for the transaction
-//
+//        OperationFee fees<>; // actual fees charged for the transaction
 //        union switch (TransactionResultCode code)
 //        {
 //        case txSUCCESS:
@@ -4641,9 +4765,9 @@ func NewTransactionResultExt(v int32, value interface{}) (result TransactionResu
 //    };
 //
 type TransactionResult struct {
-	FeeCharged Int64
-	Result     TransactionResultResult
-	Ext        TransactionResultExt
+	Fees   []OperationFee
+	Result TransactionResultResult
+	Ext    TransactionResultExt
 }
 
 // UpgradeType is an XDR Typedef defines as:
