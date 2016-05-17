@@ -328,29 +328,35 @@ type DataValue []byte
 //
 //   enum AccountType
 //    {
-//        ACCOUNT_USER = 0,
-//        ACCOUNT_MERCHANT = 1,
-//        ACCOUNT_DISTRIBUTION_AGENT = 2,
-//        ACCOUNT_SETTLEMENT_AGENT = 3,
-//        ACCOUNT_EXCHANGE_AGENT = 4
+//        ACCOUNT_ANONYMOUS_USER = 0,
+//        ACCOUNT_REGISTERED_USER = 1,
+//        ACCOUNT_MERCHANT = 2,
+//        ACCOUNT_DISTRIBUTION_AGENT = 3,
+//        ACCOUNT_SETTLEMENT_AGENT = 4,
+//        ACCOUNT_EXCHANGE_AGENT = 5,
+//        ACCOUNT_BANK = 6
 //    };
 //
 type AccountType int32
 
 const (
-	AccountTypeAccountUser              AccountType = 0
-	AccountTypeAccountMerchant          AccountType = 1
-	AccountTypeAccountDistributionAgent AccountType = 2
-	AccountTypeAccountSettlementAgent   AccountType = 3
-	AccountTypeAccountExchangeAgent     AccountType = 4
+	AccountTypeAccountAnonymousUser     AccountType = 0
+	AccountTypeAccountRegisteredUser    AccountType = 1
+	AccountTypeAccountMerchant          AccountType = 2
+	AccountTypeAccountDistributionAgent AccountType = 3
+	AccountTypeAccountSettlementAgent   AccountType = 4
+	AccountTypeAccountExchangeAgent     AccountType = 5
+	AccountTypeAccountBank              AccountType = 6
 )
 
 var accountTypeMap = map[int32]string{
-	0: "AccountTypeAccountUser",
-	1: "AccountTypeAccountMerchant",
-	2: "AccountTypeAccountDistributionAgent",
-	3: "AccountTypeAccountSettlementAgent",
-	4: "AccountTypeAccountExchangeAgent",
+	0: "AccountTypeAccountAnonymousUser",
+	1: "AccountTypeAccountRegisteredUser",
+	2: "AccountTypeAccountMerchant",
+	3: "AccountTypeAccountDistributionAgent",
+	4: "AccountTypeAccountSettlementAgent",
+	5: "AccountTypeAccountExchangeAgent",
+	6: "AccountTypeAccountBank",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
