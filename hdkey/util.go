@@ -84,12 +84,12 @@ func AddPubKeys(public, tweak []byte) []byte {
 }
 
 func verDecodeCheck(addressOrSeed string) (res []byte, f bool) {
-	res, err := strkey.Decode(strkey.VersionByteAccountID, addressOrSeed)
+	res, err := strkey.Decode(strkey.VersionByteMPub, addressOrSeed)
 	if err == nil {
 		return res, false
 	}
 
-	res, err = strkey.Decode(strkey.VersionByteSeed, addressOrSeed)
+	res, err = strkey.Decode(strkey.VersionByteMPriv, addressOrSeed)
 	if err == nil {
 		return res, true
 	}

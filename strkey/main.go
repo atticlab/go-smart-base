@@ -5,9 +5,8 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
-	"fmt"
-
 	"github.com/stellar/go-stellar-base/crc16"
+	"fmt"
 )
 
 var ErrInvalidVersionByte = errors.New("invalid version byte")
@@ -21,6 +20,8 @@ const (
 	VersionByteAccountID VersionByte = 6 << 3 // Base32-encodes to 'G...'
 	//VersionByteSeed is the version byte used for encoded stellar seed
 	VersionByteSeed = 18 << 3 // Base32-encodes to 'S...'
+	VersionByteMPriv = 0x60 // Base32-encodes to 'M...'
+	VersionByteMPub = 0x78 // Base32-encodes to 'P...'
 )
 
 // Decode decodes the provided StrKey into a raw value, checking the checksum
@@ -116,6 +117,11 @@ func checkValidVersionByte(version VersionByte) error {
 	if version == VersionByteSeed {
 		return nil
 	}
-
+	if version == VersionByteMPriv {
+		return nil
+	}
+	if version == VersionByteMPub {
+		return nil
+	}
 	return ErrInvalidVersionByte
 }
