@@ -97,6 +97,29 @@ func verDecodeCheck(addressOrSeed string) (res []byte, f bool) {
 	return
 }
 
+func sliceCompare(a, b []byte) bool {
+
+	if a == nil && b == nil {
+		return true;
+	}
+
+	if a == nil || b == nil {
+		return false;
+	}
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func uint32ToByte(i uint32) []byte {
 	a := make([]byte, 4)
 	binary.BigEndian.PutUint32(a, i)

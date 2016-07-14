@@ -1,6 +1,8 @@
 package hdkey
 
 import "fmt"
+//
+//import "fmt"
 //import (
 //	//"encoding/base64"
 //	//"log"
@@ -155,7 +157,7 @@ import "fmt"
 //	fmt.Println(seedR)
 //	path1 := "m/1"
 //	path2 := "M/1"
-//	hdkM := masterKeyStr(seedR)
+//	hdkM := MasterKeyStr(seedR)
 //	m1 := hex.EncodeToString(hdkM.PrivateKey)
 //	m2 := hex.EncodeToString(hdkM.PublicKey)
 //	fmt.Println("Master=============")

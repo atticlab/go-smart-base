@@ -19,9 +19,11 @@ const (
 	//VersionByteAccountID is the version byte used for encoded stellar addresses
 	VersionByteAccountID VersionByte = 6 << 3 // Base32-encodes to 'G...'
 	//VersionByteSeed is the version byte used for encoded stellar seed
-	VersionByteSeed = 18 << 3 // Base32-encodes to 'S...'
-	VersionByteMPriv = 0x60 // Base32-encodes to 'M...'
-	VersionByteMPub = 0x78 // Base32-encodes to 'P...'
+	VersionByteSeed  	= 18 << 3 	  // Base32-encodes to 'S...'
+	VersionByteMPriv 	= 0x60 		  // Base32-encodes to 'M...'
+	VersionByteMPub  	= 0x78 		  // Base32-encodes to 'P...'
+	VersionBytePrivWallet  	= 0xb0 		  // Base32-encodes to 'W...'
+	VersionBytePubWallet  	= 0xc8 		  // Base32-encodes to 'Z...'
 )
 
 // Decode decodes the provided StrKey into a raw value, checking the checksum
@@ -121,6 +123,12 @@ func checkValidVersionByte(version VersionByte) error {
 		return nil
 	}
 	if version == VersionByteMPub {
+		return nil
+	}
+	if version == VersionBytePubWallet {
+		return nil
+	}
+	if version == VersionBytePrivWallet {
 		return nil
 	}
 	return ErrInvalidVersionByte

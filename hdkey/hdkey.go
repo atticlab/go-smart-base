@@ -34,7 +34,7 @@ type HDKey struct {
 
 //Derive returns the ith child of wallet w. Values of path = "m/i/j/../x"
 //or path = "M/i/j/../x". Func split path, run Child with i = i||j||..||xs
-func (w *HDKey) derive(p string) (*HDKey, error) {
+func (w *HDKey) Derive(p string) (*HDKey, error) {
 	var path []string
 	var keyPath bool
 	path = strings.Split(p, "/")
@@ -87,7 +87,7 @@ func (w *HDKey) child(i uint32, f bool) (*HDKey, error) {
 	return &HDKey{w.Vbytes, w.Depth + 1, fingerprint, uint32ToByte(i), I[32:], newPriv, newPub}, nil
 }
 
-func genSeed(length int) ([]byte, error) {
+func GenSeed(length int) ([]byte, error) {
 	b := make([]byte, length)
 	//if length < 128 {
 	//	return b, errors.New("length must be at least 128 bits")
@@ -96,14 +96,13 @@ func genSeed(length int) ([]byte, error) {
 	return b, err
 }
 
-func masterKeyStr(data string) *HDKey {
-	seed, f := verDecodeCheck(data)
-	return masterKey(hex.EncodeToString(seed), f)
-}
+//func MasterKeyStr(data string) *HDKey {
+//	seed, f := verDecodeCheck(data)
+//	return MasterKey(seed, f)
+//}
 
 // MasterKey returns a new wallet given a random seed.
-func masterKey(str string, ver bool) *HDKey {
-	seed, _ := hex.DecodeString(str)
+func MasterKey(seed []byte, ver []byte) *HDKey {
 	key := []byte("Stellar seed")
 	mac := hmac.New(sha512.New, key)
 	mac.Write(seed)
@@ -113,10 +112,12 @@ func masterKey(str string, ver bool) *HDKey {
 	depth := 0
 	i := make([]byte, 4)
 	fingerprint := make([]byte, 4)
-	if ver {
+	if sliceCompare(ver, Private) {
 		return &HDKey{Private, uint16(depth), fingerprint, i, chain_code, secret, PrivToPub(secret)}
-	} else {
+	} else if sliceCompare(ver, Public) {
 		return &HDKey{Public, uint16(depth), fingerprint, i, chain_code, nil, PrivToPub(secret)}
+	} else {
+		panic("Invalid version")
 	}
 }
 
