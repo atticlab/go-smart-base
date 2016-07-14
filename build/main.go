@@ -123,6 +123,12 @@ type Destination struct {
 	AddressOrSeed string
 }
 
+// OpLongData is a mutator capable of setting the OpData on
+// an operations that have one.
+type OpLongData struct {
+	OpData string
+}
+
 // InflationDest is a mutator capable of setting the inflation destination
 type InflationDest string
 

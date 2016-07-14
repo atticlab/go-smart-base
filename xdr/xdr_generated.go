@@ -312,6 +312,12 @@ type String32 string
 //
 type String64 string
 
+// LongString is an XDR Typedef defines as:
+//
+//   typedef string longString<>;
+//
+type LongString string
+
 // SequenceNumber is an XDR Typedef defines as:
 //
 //   typedef uint64 SequenceNumber;
@@ -1408,7 +1414,8 @@ type DecoratedSignature struct {
 //        ALLOW_TRUST = 7,
 //        ACCOUNT_MERGE = 8,
 //        INFLATION = 9,
-//        MANAGE_DATA = 10
+//        MANAGE_DATA = 10,
+//    	ADMINISTRATIVE = 11
 //    };
 //
 type OperationType int32
@@ -1425,6 +1432,7 @@ const (
 	OperationTypeAccountMerge       OperationType = 8
 	OperationTypeInflation          OperationType = 9
 	OperationTypeManageData         OperationType = 10
+	OperationTypeAdministrative     OperationType = 11
 )
 
 var operationTypeMap = map[int32]string{
@@ -1439,6 +1447,7 @@ var operationTypeMap = map[int32]string{
 	8:  "OperationTypeAccountMerge",
 	9:  "OperationTypeInflation",
 	10: "OperationTypeManageData",
+	11: "OperationTypeAdministrative",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1744,6 +1753,17 @@ type ManageDataOp struct {
 	DataValue *DataValue
 }
 
+// AdministrativeOp is an XDR Struct defines as:
+//
+//   struct AdministrativeOp
+//    {
+//    	longString opData;
+//    };
+//
+type AdministrativeOp struct {
+	OpData LongString
+}
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -1770,6 +1790,8 @@ type ManageDataOp struct {
 //            void;
 //        case MANAGE_DATA:
 //            ManageDataOp manageDataOp;
+//    	case ADMINISTRATIVE:
+//    		AdministrativeOp adminOp;
 //        }
 //
 type OperationBody struct {
@@ -1784,6 +1806,7 @@ type OperationBody struct {
 	AllowTrustOp         *AllowTrustOp
 	Destination          *AccountId
 	ManageDataOp         *ManageDataOp
+	AdminOp              *AdministrativeOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1818,6 +1841,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case OperationTypeManageData:
 		return "ManageDataOp", true
+	case OperationTypeAdministrative:
+		return "AdminOp", true
 	}
 	return "-", false
 }
@@ -1898,6 +1923,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.ManageDataOp = &tv
+	case OperationTypeAdministrative:
+		tv, ok := value.(AdministrativeOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AdministrativeOp")
+			return
+		}
+		result.AdminOp = &tv
 	}
 	return
 }
@@ -2152,6 +2184,31 @@ func (u OperationBody) GetManageDataOp() (result ManageDataOp, ok bool) {
 	return
 }
 
+// MustAdminOp retrieves the AdminOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustAdminOp() AdministrativeOp {
+	val, ok := u.GetAdminOp()
+
+	if !ok {
+		panic("arm AdminOp is not set")
+	}
+
+	return val
+}
+
+// GetAdminOp retrieves the AdminOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetAdminOp() (result AdministrativeOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "AdminOp" {
+		result = *u.AdminOp
+		ok = true
+	}
+
+	return
+}
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -2185,6 +2242,8 @@ func (u OperationBody) GetManageDataOp() (result ManageDataOp, ok bool) {
 //            void;
 //        case MANAGE_DATA:
 //            ManageDataOp manageDataOp;
+//    	case ADMINISTRATIVE:
+//    		AdministrativeOp adminOp;
 //        }
 //        body;
 //    };
@@ -4044,6 +4103,88 @@ func NewManageDataResult(code ManageDataResultCode, value interface{}) (result M
 	return
 }
 
+// AdministrativeResultCode is an XDR Enum defines as:
+//
+//   enum AdministrativeResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        ADMINISTRATIVE_SUCCESS = 0, // op was applied
+//
+//        // codes considered as "failure" for the operation
+//        ADMINISTRATIVE_MALFORMED = -1,   // invalid operation
+//        ADMINISTRATIVE_NOT_AUTHORIZED = -2 //not enough rights to perform
+//    };
+//
+type AdministrativeResultCode int32
+
+const (
+	AdministrativeResultCodeAdministrativeSuccess       AdministrativeResultCode = 0
+	AdministrativeResultCodeAdministrativeMalformed     AdministrativeResultCode = -1
+	AdministrativeResultCodeAdministrativeNotAuthorized AdministrativeResultCode = -2
+)
+
+var administrativeResultCodeMap = map[int32]string{
+	0:  "AdministrativeResultCodeAdministrativeSuccess",
+	-1: "AdministrativeResultCodeAdministrativeMalformed",
+	-2: "AdministrativeResultCodeAdministrativeNotAuthorized",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for AdministrativeResultCode
+func (e AdministrativeResultCode) ValidEnum(v int32) bool {
+	_, ok := administrativeResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e AdministrativeResultCode) String() string {
+	name, _ := administrativeResultCodeMap[int32(e)]
+	return name
+}
+
+// AdministrativeResult is an XDR Union defines as:
+//
+//   union AdministrativeResult switch (AdministrativeResultCode code)
+//    {
+//    case ADMINISTRATIVE_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type AdministrativeResult struct {
+	Code AdministrativeResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u AdministrativeResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of AdministrativeResult
+func (u AdministrativeResult) ArmForSwitch(sw int32) (string, bool) {
+	switch AdministrativeResultCode(sw) {
+	case AdministrativeResultCodeAdministrativeSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewAdministrativeResult creates a new  AdministrativeResult.
+func NewAdministrativeResult(code AdministrativeResultCode, value interface{}) (result AdministrativeResult, err error) {
+	result.Code = code
+	switch AdministrativeResultCode(code) {
+	case AdministrativeResultCodeAdministrativeSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -4107,6 +4248,8 @@ func (e OperationResultCode) String() string {
 //            InflationResult inflationResult;
 //        case MANAGE_DATA:
 //            ManageDataResult manageDataResult;
+//    	case ADMINISTRATIVE:
+//    		AdministrativeResult adminResult;
 //        }
 //
 type OperationResultTr struct {
@@ -4122,6 +4265,7 @@ type OperationResultTr struct {
 	AccountMergeResult       *AccountMergeResult
 	InflationResult          *InflationResult
 	ManageDataResult         *ManageDataResult
+	AdminResult              *AdministrativeResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -4156,6 +4300,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "InflationResult", true
 	case OperationTypeManageData:
 		return "ManageDataResult", true
+	case OperationTypeAdministrative:
+		return "AdminResult", true
 	}
 	return "-", false
 }
@@ -4241,6 +4387,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.ManageDataResult = &tv
+	case OperationTypeAdministrative:
+		tv, ok := value.(AdministrativeResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AdministrativeResult")
+			return
+		}
+		result.AdminResult = &tv
 	}
 	return
 }
@@ -4520,6 +4673,31 @@ func (u OperationResultTr) GetManageDataResult() (result ManageDataResult, ok bo
 	return
 }
 
+// MustAdminResult retrieves the AdminResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustAdminResult() AdministrativeResult {
+	val, ok := u.GetAdminResult()
+
+	if !ok {
+		panic("arm AdminResult is not set")
+	}
+
+	return val
+}
+
+// GetAdminResult retrieves the AdminResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetAdminResult() (result AdministrativeResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "AdminResult" {
+		result = *u.AdminResult
+		ok = true
+	}
+
+	return
+}
+
 // OperationResult is an XDR Union defines as:
 //
 //   union OperationResult switch (OperationResultCode code)
@@ -4549,6 +4727,8 @@ func (u OperationResultTr) GetManageDataResult() (result ManageDataResult, ok bo
 //            InflationResult inflationResult;
 //        case MANAGE_DATA:
 //            ManageDataResult manageDataResult;
+//    	case ADMINISTRATIVE:
+//    		AdministrativeResult adminResult;
 //        }
 //        tr;
 //    default:

@@ -44,7 +44,7 @@ var _ = Describe("SetOptionsBuilder Mutators", func() {
 
 	Describe("Signer", func() {
 		Context("using a valid stellar address", func() {
-			BeforeEach(func() { mut = Signer{address, 5} })
+			BeforeEach(func() { mut = Signer{address, 5, 0} })
 
 			It("succeeds", func() {
 				Expect(subject.Err).NotTo(HaveOccurred())
@@ -54,11 +54,12 @@ var _ = Describe("SetOptionsBuilder Mutators", func() {
 				aid, _ := stellarbase.AddressToAccountId(address)
 				Expect(subject.SO.Signer.PubKey.MustEd25519()).To(Equal(aid.MustEd25519()))
 				Expect(subject.SO.Signer.Weight).To(Equal(xdr.Uint32(5)))
+				Expect(subject.SO.Signer.SignerType).To(Equal(xdr.Uint32(0)))
 			})
 		})
 
 		Context("using an invalid PubKey", func() {
-			BeforeEach(func() { mut = Signer{bad, 5} })
+			BeforeEach(func() { mut = Signer{bad, 5, 0} })
 			It("failed", func() { Expect(subject.Err).To(HaveOccurred()) })
 		})
 	})

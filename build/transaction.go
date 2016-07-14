@@ -111,6 +111,18 @@ func (m AccountMergeBuilder) MutateTransaction(o *TransactionBuilder) error {
 	return m.Err
 }
 
+// MutateTransaction for AdministrativeOpBuilder causes the underylying OpLongData
+// to be added to the operation list for the provided transaction
+func (m AdministrativeOpBuilder) MutateTransaction(o *TransactionBuilder) error {
+	if m.Err != nil {
+		return m.Err
+	}
+
+	m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeAdministrative, m.OpData)
+	o.TX.Operations = append(o.TX.Operations, m.O)
+	return m.Err
+}
+
 // MutateTransaction for AllowTrustBuilder causes the underylying AllowTrustOp
 // to be added to the operation list for the provided transaction
 func (m AllowTrustBuilder) MutateTransaction(o *TransactionBuilder) error {

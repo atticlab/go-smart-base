@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"bitbucket.org/atticlab/go-smart-base"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 var _ = Describe("CreateAccountBuilder Mutators", func() {
@@ -59,16 +58,6 @@ var _ = Describe("CreateAccountBuilder Mutators", func() {
 		Context("using an invalid value", func() {
 			BeforeEach(func() { mut = SourceAccount{bad} })
 			It("failed", func() { Expect(subject.Err).To(HaveOccurred()) })
-		})
-	})
-
-	Describe("NativeAmount", func() {
-		BeforeEach(func() { mut = NativeAmount{"101"} })
-		It("sets the starting balance properly", func() {
-			Expect(subject.CA.StartingBalance).To(Equal(xdr.Int64(1010000000)))
-		})
-		It("succeeds", func() {
-			Expect(subject.Err).NotTo(HaveOccurred())
 		})
 	})
 })
