@@ -2,7 +2,7 @@ package hdkey
 
 import (
 	"encoding/hex"
-	"github.com/stellar/go-stellar-base/strkey"
+	"bitbucket.com/atticlab/go-stellar-base/strkey"
 )
 
 func GetMnemonic() string {

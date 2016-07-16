@@ -1,11 +1,10 @@
 package hdwallet
 import (
-	"github.com/stellar/go-stellar-base/strkey"
-	"github.com/stellar/go-stellar-base/hdkey"
+	"bitbucket.com/atticlab/go-stellar-base/strkey"
+	"bitbucket.com/atticlab/go-stellar-base/hdkey"
 	"encoding/binary"
 	"encoding/hex"
 	"strconv"
-
 )
 
 const (
@@ -30,8 +29,8 @@ type accountInfo struct {
 }
 
 type accountList struct {
-	Key []string
-	Sum []uint32
+	Key string
+	Sum uint32
 }
 
 type HDWallet struct {
@@ -124,10 +123,7 @@ func initKey(ver []byte, rawKey []byte)  *HDWallet {
 	masterKP.Depth = uint16(0)
 	masterKP.Chaincode = rawKey[:32]
 
-	if sliceCompare(ver, versionBytes["mpriv"]) {
-		masterKP.PrivateKey = rawKey[32:]
-		masterKP.PublicKey = hdkey.PrivToPub(rawKey[32:])
-	} else if sliceCompare(ver, versionBytes["mpub"]) {
+	if sliceCompare(ver, versionBytes["mpub"]) {
 		masterKP.PrivateKey = nil
 		masterKP.PublicKey = rawKey[32:]
 	}
@@ -153,14 +149,14 @@ func setAllIndex(hdw *HDWallet) *HDWallet{
 	} else {
 		panic("Invalid version")
 	}
-
+//TODO: Check this cycle
 	for i := uint32(0); i < currentLookAhead; i++ {
 		derivedKey, _ := hdw.HDK.Derive(path + strconv.FormatUint(uint64(i), 10))
 		accountId, _ := strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
 		accountStatus := checkAccount(accountId)
 		if !accountStatus.Valid {
 			currentLookAhead++
-		} else if (accountStatus.Balance > 0) && (FirstWithMoney == 0) {
+		} else if accountStatus.Balance > uint32(0) {
 			FirstWithMoney = i
 		}
 		FirstUnused = i + 1
@@ -170,7 +166,6 @@ func setAllIndex(hdw *HDWallet) *HDWallet{
 	hdw.FirstUnused = FirstUnused
 	return hdw
 }
-
 func getPublicMap(hd *hdkey.HDKey) []uint32 {
 	var maps []uint32
 	path := "M/2/"
@@ -184,9 +179,9 @@ func getPublicMap(hd *hdkey.HDKey) []uint32 {
 			derivedKey, _ := hd.Derive(path + strconv.FormatUint(uint64(d), 10) + "/" + strconv.FormatUint(uint64(i), 10))
 			accountId, _ := strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
 			accountStatus := checkAccount(accountId)
-			if !accountStatus.Valid {
+			if accountStatus.Valid == false {
 				currentLookAhead++
-			} else if (accountStatus.Balance > 0) && maps[j] == 0 {
+			} else if accountStatus.Balance  > 0 {
 				maps[j] = i
 				j++
 				break
@@ -220,49 +215,75 @@ func (hdw *HDWallet) Serialize() string {
 	return str
 }
 
-func (hdw *HDWallet) MakeWithdrawalList(sum uint32) *accountList {
-	list := new(accountList)
-	currentSum := uint32(0)
-	currentLookAhead := lookAhead
+
+
+func (hdw *HDWallet) MakeWithdrawalList(sum uint32) *[]accountList {
+	list := []accountList{{"0", 0}}
 	currentBranchAhead := branchAhead
 	path := []string{"m/1/", "m/2/",}
-	for p := 0; p < 2; p++ {
-		currentPath := path[p]
-		jd := uint32(0)
-		for d := uint32(0); d < currentBranchAhead; d++{
-			jT := jd
-			j := uint32(0)
-			if p == 1 {
-				currentPath = currentPath + strconv.FormatUint(uint64(d), 10) + "/"
-			}
-			for i := uint32(0); i < currentLookAhead; i++ {
-				derivedKey, _ := hdw.HDK.Derive(currentPath + strconv.FormatUint(uint64(i), 10))
-				accountId, _ := strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
-				accountStatus := checkAccount(accountId)
-				if accountStatus.HasBalance {
-					if currentSum + accountStatus.Balance < sum {
-						currentSum += accountStatus.Balance
-						list.Key[j], _ = strkey.Encode(strkey.VersionByteSeed, derivedKey.PrivateKey)
-						list.Sum[j] = accountStatus.Balance
-						currentLookAhead++
-						jd++
-						j++
-					} else if currentSum + accountStatus.Balance >= sum {
-						delta := sum - currentSum
-						list.Key[j], _ = strkey.Encode(strkey.VersionByteSeed, derivedKey.PrivateKey)
-						list.Sum[j] = delta
-						return list
-					}}}
-			if (jd == jT){
-				currentBranchAhead++
-		}}}
+	currentPath := path[0]
+	resList, suc := hdw.findMoneyInBranch(list, currentPath, sum)
+	list = resList
+	if suc {
+		return &list
+	}
+	for d := uint32(0); d < currentBranchAhead; d++{
 
-	return list
+		currentPath = path[1] + strconv.FormatUint(uint64(d), 10) + "/"
+
+		resList, suc := hdw.findMoneyInBranch(list, currentPath, sum)
+		list = resList
+		if suc {
+			break
+		} else {
+			currentBranchAhead++
+		}
+	}
+
+	return &list
 }
 
-func (hdw *HDWallet) MakeInvioceList(sum uint32) *accountList {
+func (hdw *HDWallet) findMoneyInBranch(list []accountList, path string, sum uint32) (resultList []accountList, success bool) {
+	zeroPair := accountList{"0", 0}
+	currentSum := uint32(0)
+	j := uint32((len(list) - 1))
+	if j > 0 {
+		for i := 0; i < len(list); i ++ {
+			currentSum += uint32(list[i].Sum)
+		}
+	}
+	currentLookAhead := lookAhead
+	for i := uint32(0); i < currentLookAhead; i++ {
+		derivedKey, _ := hdw.HDK.Derive(path + strconv.FormatUint(uint64(i), 10))
+		accountId, _ := strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
+		accountStatus := checkAccount(accountId)
+
+		if accountStatus.HasBalance {
+			if currentSum + accountStatus.Balance < sum {
+				currentSum += accountStatus.Balance
+				list[j].Key, _ = strkey.Encode(strkey.VersionByteSeed, derivedKey.PrivateKey)
+				list[j].Sum = accountStatus.Balance
+				list = append(list, zeroPair)
+				currentLookAhead++
+				j += 1
+			} else if currentSum + accountStatus.Balance >= sum {
+				delta := sum - currentSum
+				list[j].Key, _ = strkey.Encode(strkey.VersionByteSeed, derivedKey.PrivateKey)
+				list[j].Sum = delta
+				resultList = list
+				return resultList, true
+			}}
+	}
+	resultList = list
+	return resultList, false
+
+}
+
+
+func (hdw *HDWallet) MakeInvoiceList(sum uint32) *[]accountList {
 	var path string
-	list := new(accountList)
+	list := []accountList{{"0", 0}}
+	zeroPair := accountList{"0", 0}
 	currentSum := uint32(0)
 	currentLookAhead := lookAhead
 
@@ -279,27 +300,33 @@ func (hdw *HDWallet) MakeInvioceList(sum uint32) *accountList {
 		if !accountStatus.Valid {
 			if currentSum + accountBalanceLimit < sum {
 				currentSum += accountBalanceLimit
-				list.Key[j], _ = strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
-				list.Sum[j] = accountBalanceLimit
+				list[j].Key, _ = strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
+				list[j].Sum = accountBalanceLimit
+				list = append(list, zeroPair)
 				currentLookAhead++
 				j++
 			} else if currentSum + accountBalanceLimit >= sum {
 				delta := sum - currentSum
-				list.Key[j], _ = strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
-				list.Sum[j] = delta
+				list[j].Key, _ = strkey.Encode(strkey.VersionByteAccountID, derivedKey.PublicKey)
+				list[j].Sum = delta
 				break
 			}
 		}
 	}
-	return list
+	return &list
 }
 
 func checkAccount(accountId string)  *accountInfo {
 	id, _ := strkey.Decode(strkey.VersionByteAccountID, accountId)
 	a := (id[0] & 1) > 0
 	b := (id[0] & 2) > 0
-	c := (id[0] ^ 5)
-	return &accountInfo{a, a&&b, uint32(c)}
+	var c uint32
+	if a&&b {
+		c = uint32(id[0] ^ 5)
+	} else {
+		c = uint32(0)
+	}
+	return &accountInfo{a, a&&b, c}
 }
 
 func uint32ToByte(i uint32) []byte {

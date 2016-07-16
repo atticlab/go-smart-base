@@ -2,10 +2,10 @@ package strkey
 
 import (
 	"bytes"
-	"encoding/base32"
+	"github.com/stellar/go-stellar-base/base32"
+	"github.com/stellar/go-stellar-base/crc16"
 	"encoding/binary"
 	"errors"
-	"github.com/stellar/go-stellar-base/crc16"
 	"fmt"
 )
 
