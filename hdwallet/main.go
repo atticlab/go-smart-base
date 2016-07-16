@@ -1,7 +1,7 @@
 package hdwallet
 import (
-	"bitbucket.org/atticlab/go-stellar-base/strkey"
-	"bitbucket.org/atticlab/go-stellar-base/hdkey"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/hdkey"
 	"encoding/binary"
 	"encoding/hex"
 	"strconv"

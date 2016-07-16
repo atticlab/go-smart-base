@@ -2,7 +2,7 @@ package hdkey
 
 import (
 	"encoding/hex"
-	"bitbucket.org/atticlab/go-stellar-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
 )
 
 func GetMnemonic() string {

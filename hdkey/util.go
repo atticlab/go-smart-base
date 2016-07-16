@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"bitbucket.org/atticlab/ed25519/edwards25519"
-	"bitbucket.org/atticlab/go-stellar-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
 )
 
 func hash(data []byte) []byte {
