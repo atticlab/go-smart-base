@@ -1,7 +1,7 @@
 package keypair
 
 import (
-	"github.com/agl/ed25519"
+	"bitbucket.com/atticlab/ed25519"
 	"bitbucket.org/atticlab/go-smart-base/strkey"
 	"bitbucket.org/atticlab/go-smart-base/xdr"
 )

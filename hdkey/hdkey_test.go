@@ -12,10 +12,10 @@ import "fmt"
 //	"fmt"
 //	"github.com/stellar/go-stellar-base/keypair"
 //	"github.com/stellar/go-stellar-base/strkey"
-//	"github.com/agl/ed25519/edwards25519"
+//	"bitbucket.com/atticlab/ed25519/edwards25519"
 //	"strconv"
 //	"bytes"
-//	"github.com/agl/ed25519"
+//	"bitbucket.com/atticlab/ed25519"
 //	"strings"
 //)
 //func bigTest() {
