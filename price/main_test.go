@@ -1,8 +1,8 @@
 package price_test
 
 import (
-	"github.com/stellar/go-stellar-base/price"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/price"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 	"testing"
 )
 

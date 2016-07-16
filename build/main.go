@@ -10,10 +10,9 @@ package build
 import (
 	"errors"
 	"math"
-
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/network"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/network"
+	"bitbucket.com/atticlab/go-smart-base/amount"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 const (

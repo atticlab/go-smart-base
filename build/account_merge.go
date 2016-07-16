@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 // AccountMerge groups the creation of a new AccountMergeBuilder with a call to Mutate.

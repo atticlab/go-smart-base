@@ -3,8 +3,9 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/xdr"
+
+	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/amount"
 )
 
 // CreateAccount groups the creation of a new CreateAccountBuilder with a call

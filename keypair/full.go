@@ -2,9 +2,9 @@ package keypair
 
 import (
 	"bytes"
-	"github.com/agl/ed25519"
-	"github.com/stellar/go-stellar-base/strkey"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/ed25519"
+	"bitbucket.com/atticlab/go-smart-base/strkey"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 type Full struct {

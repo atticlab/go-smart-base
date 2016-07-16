@@ -1,11 +1,12 @@
 package xdr_test
 
 import (
-	"github.com/stellar/go-stellar-base"
-	. "github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base"
+	."bitbucket.com/atticlab/go-smart-base/xdr"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 )
 
 var _ = Describe("xdr.Asset#Extract()", func() {

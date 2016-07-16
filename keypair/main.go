@@ -4,10 +4,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
-
-	"github.com/stellar/go-stellar-base/network"
-	"github.com/stellar/go-stellar-base/strkey"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/network"
+	"bitbucket.com/atticlab/go-smart-base/strkey"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 var (

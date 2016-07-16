@@ -2,8 +2,8 @@ package strkey
 
 import (
 	"bytes"
-	"github.com/stellar/go-stellar-base/base32"
-	"github.com/stellar/go-stellar-base/crc16"
+	"bitbucket.com/atticlab/go-smart-base/base32"
+	"bitbucket.com/atticlab/go-smart-base/crc16"
 	"encoding/binary"
 	"errors"
 	"fmt"

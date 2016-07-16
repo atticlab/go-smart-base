@@ -1,8 +1,8 @@
 package amount_test
 
 import (
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/amount"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 	"testing"
 )
 

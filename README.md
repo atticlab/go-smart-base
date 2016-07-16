@@ -8,7 +8,7 @@ to read, write, hash, and sign the xdr structures that are used in stellar-core.
 
 
 ```shell
-go get github.com/stellar/go-stellar-base
+go get bitbucket.com/atticlab/go-smart-base
 ```
 
 ## Usage

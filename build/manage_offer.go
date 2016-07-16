@@ -3,9 +3,9 @@ package build
 import (
 	"errors"
 
-	"github.com/stellar/go-stellar-base/amount"
-	"github.com/stellar/go-stellar-base/price"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/amount"
+	"bitbucket.com/atticlab/go-smart-base/price"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 // CreateOffer creates a new offer

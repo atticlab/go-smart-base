@@ -3,7 +3,7 @@ package build
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stellar/go-stellar-base"
+	"bitbucket.com/atticlab/go-smart-base"
 )
 
 var _ = Describe("InflationBuilder Mutators", func() {

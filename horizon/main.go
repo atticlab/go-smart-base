@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 // DefaultTestNetClient is a default client to connect to test network

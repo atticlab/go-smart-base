@@ -2,7 +2,7 @@ package build
 
 import (
 	"fmt"
-	"github.com/stellar/go-stellar-base/xdr"
+	"bitbucket.com/atticlab/go-smart-base/xdr"
 )
 
 // MockSequenceProvider is a mock sequence provider.
