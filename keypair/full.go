@@ -2,7 +2,7 @@ package keypair
 
 import (
 	"bytes"
-	"bitbucket.com/atticlab/ed25519"
+	"bitbucket.org/atticlab/ed25519"
 	"bitbucket.org/atticlab/go-smart-base/strkey"
 	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
