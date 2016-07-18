@@ -2,7 +2,7 @@ package strkey
 
 import (
 	"bytes"
-	"bitbucket.org/atticlab/go-smart-base/base32"
+	"encoding/base32"
 	"bitbucket.org/atticlab/go-smart-base/crc16"
 	"encoding/binary"
 	"errors"
