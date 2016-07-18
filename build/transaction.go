@@ -118,7 +118,9 @@ func (m AdministrativeOpBuilder) MutateTransaction(o *TransactionBuilder) error 
 		return m.Err
 	}
 
-	m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeAdministrative, m.OpData)
+	var admin xdr.AdministrativeOp
+	admin.OpData = m.OpData
+	m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeAdministrative, admin)
 	o.TX.Operations = append(o.TX.Operations, m.O)
 	return m.Err
 }
