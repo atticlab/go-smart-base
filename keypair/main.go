@@ -8,6 +8,7 @@ import (
 	"bitbucket.org/atticlab/go-smart-base/network"
 	"bitbucket.org/atticlab/go-smart-base/strkey"
 	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"crypto/sha512"
 )
 
 var (
@@ -48,6 +49,16 @@ func Random() (*Full, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	h := sha512.New()
+	h.Write(rawSeed[:])
+	digest := h.Sum(nil)
+
+	digest[0] &= 248
+	digest[31] &= 127
+	digest[31] |= 64
+
+	copy(rawSeed[:], digest[:32])
 
 	kp, err := FromRawSeed(rawSeed)
 
