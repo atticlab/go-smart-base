@@ -10,9 +10,9 @@ package build
 import (
 	"errors"
 	"math"
-	"bitbucket.com/atticlab/go-smart-base/network"
-	"bitbucket.com/atticlab/go-smart-base/amount"
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/network"
+	"bitbucket.org/atticlab/go-smart-base/amount"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 const (

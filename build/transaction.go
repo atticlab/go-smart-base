@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"bitbucket.com/atticlab/go-smart-base/hash"
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/hash"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // Transaction groups the creation of a new TransactionBuilder with a call

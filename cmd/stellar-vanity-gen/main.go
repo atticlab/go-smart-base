@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"bitbucket.com/atticlab/go-smart-base/keypair"
+	"bitbucket.org/atticlab/go-smart-base/keypair"
 	"log"
 	"os"
 	"strconv"

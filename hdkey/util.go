@@ -3,8 +3,8 @@ package hdkey
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"bitbucket.com/atticlab/ed25519/edwards25519"
-	"bitbucket.com/atticlab/go-smart-base/strkey"
+	"bitbucket.org/atticlab/ed25519/edwards25519"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
 )
 
 func hash(data []byte) []byte {

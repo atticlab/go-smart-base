@@ -3,8 +3,8 @@ package build
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"bitbucket.com/atticlab/go-smart-base"
-	"bitbucket.com/atticlab/go-smart-basexdr"
+	"bitbucket.org/atticlab/go-smart-base"
+	"bitbucket.org/atticlab/go-smart-basexdr"
 )
 
 var _ = Describe("ChangeTrustBuilder Mutators", func() {

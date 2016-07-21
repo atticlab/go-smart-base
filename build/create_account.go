@@ -4,8 +4,8 @@ import (
 	"errors"
 
 
-	"bitbucket.com/atticlab/go-smart-base/xdr"
-	"bitbucket.com/atticlab/go-smart-base/amount"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/amount"
 )
 
 // CreateAccount groups the creation of a new CreateAccountBuilder with a call

@@ -3,8 +3,8 @@ package build
 import (
 	"errors"
 
-	"bitbucket.com/atticlab/go-smart-base/keypair"
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/keypair"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 func setAccountId(addressOrSeed string, aid *xdr.AccountId) error {

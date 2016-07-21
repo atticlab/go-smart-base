@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // One is the value of one whole unit of currency.  Stellar uses 7 fixed digits

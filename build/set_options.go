@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // SetOptions groups the creation of a new SetOptions with a call to Mutate.

@@ -6,7 +6,7 @@ import (
 	"math"
 	"math/big"
 
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // Parse  calculates and returns the best rational approximation of the given real number price.

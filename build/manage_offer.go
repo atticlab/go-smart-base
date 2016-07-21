@@ -3,9 +3,9 @@ package build
 import (
 	"errors"
 
-	"bitbucket.com/atticlab/go-smart-base/amount"
-	"bitbucket.com/atticlab/go-smart-base/price"
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/amount"
+	"bitbucket.org/atticlab/go-smart-base/price"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 // CreateOffer creates a new offer

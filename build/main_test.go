@@ -10,7 +10,7 @@ import (
 
 func TestBuild(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Package: bitbucket.com/atticlab/go-smart-base/build")
+	RunSpecs(t, "Package: bitbucket.org/atticlab/go-smart-base/build")
 }
 
 // ExampleTransactionBuilder creates and signs a simple transaction, and then

@@ -1,8 +1,8 @@
 package stellarbase
 
 import (
-	"bitbucket.com/atticlab/go-smart-base/strkey"
-	"bitbucket.com/atticlab/go-smart-base/xdr"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 //go:generate rake xdr:update

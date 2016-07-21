@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	xdr "bitbucket.com/atticlab/go-smart-base/xdr"
+	xdr "bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
 func TestDecode(t *testing.T) {

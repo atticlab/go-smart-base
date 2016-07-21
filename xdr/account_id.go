@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"bitbucket.com/atticlab/go-smart-base/strkey"
+	"bitbucket.org/atticlab/go-smart-base/strkey"
 )
 
 // Address returns the strkey encoded form of this AccountId.  This method will

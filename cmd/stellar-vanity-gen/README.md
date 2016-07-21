@@ -6,7 +6,7 @@ This folder contains `stellar-vanity-gen` a simple utility to generate vanity ad
 ## Installing
 
 ```bash
-$ go get -u bitbucket.com/atticlab/go-smart-base/cmd/stellar-vanity-gen
+$ go get -u bitbucket.org/atticlab/go-smart-base/cmd/stellar-vanity-gen
 ```
 
 ## Running
