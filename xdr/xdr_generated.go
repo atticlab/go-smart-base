@@ -1469,17 +1469,112 @@ func (e OperationType) String() string {
 	return name
 }
 
+// ScratchCard is an XDR Struct defines as:
+//
+//   struct ScratchCard
+//    {
+//    	Asset asset;           // what they end up with
+//        int64 amount;          // amount they end up with
+//    };
+//
+type ScratchCard struct {
+	Asset  Asset
+	Amount Int64
+}
+
+// CreateAccountOpBody is an XDR NestedUnion defines as:
+//
+//   union switch (AccountType accountType)
+//        {
+//        case ACCOUNT_SCRATCH_CARD:
+//            ScratchCard scratchCard;
+//    	default:
+//    		void;
+//        }
+//
+type CreateAccountOpBody struct {
+	AccountType AccountType
+	ScratchCard *ScratchCard
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u CreateAccountOpBody) SwitchFieldName() string {
+	return "AccountType"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of CreateAccountOpBody
+func (u CreateAccountOpBody) ArmForSwitch(sw int32) (string, bool) {
+	switch AccountType(sw) {
+	case AccountTypeAccountScratchCard:
+		return "ScratchCard", true
+	default:
+		return "", true
+	}
+}
+
+// NewCreateAccountOpBody creates a new  CreateAccountOpBody.
+func NewCreateAccountOpBody(accountType AccountType, value interface{}) (result CreateAccountOpBody, err error) {
+	result.AccountType = accountType
+	switch AccountType(accountType) {
+	case AccountTypeAccountScratchCard:
+		tv, ok := value.(ScratchCard)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScratchCard")
+			return
+		}
+		result.ScratchCard = &tv
+	default:
+		// void
+	}
+	return
+}
+
+// MustScratchCard retrieves the ScratchCard value from the union,
+// panicing if the value is not set.
+func (u CreateAccountOpBody) MustScratchCard() ScratchCard {
+	val, ok := u.GetScratchCard()
+
+	if !ok {
+		panic("arm ScratchCard is not set")
+	}
+
+	return val
+}
+
+// GetScratchCard retrieves the ScratchCard value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u CreateAccountOpBody) GetScratchCard() (result ScratchCard, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.AccountType))
+
+	if armName == "ScratchCard" {
+		result = *u.ScratchCard
+		ok = true
+	}
+
+	return
+}
+
 // CreateAccountOp is an XDR Struct defines as:
 //
 //   struct CreateAccountOp
 //    {
 //        AccountID destination; // account to create
-//        uint32 accountType; // amount they end up with
+//        union switch (AccountType accountType)
+//        {
+//        case ACCOUNT_SCRATCH_CARD:
+//            ScratchCard scratchCard;
+//    	default:
+//    		void;
+//        }
+//        body;
+//
 //    };
 //
 type CreateAccountOp struct {
 	Destination AccountId
-	AccountType Uint32
+	Body        CreateAccountOpBody
 }
 
 // PaymentOp is an XDR Struct defines as:
@@ -2816,7 +2911,9 @@ type ClaimOfferAtom struct {
 //            -3, // would create an account below the min reserve
 //        CREATE_ACCOUNT_ALREADY_EXIST = -4, // account already exists
 //        CREATE_ACCOUNT_NOT_AUTHORIZED_TYPE = -5,
-//        CREATE_ACCOUNT_WRONG_TYPE = -6
+//        CREATE_ACCOUNT_WRONG_TYPE = -6,
+//        CREATE_ACCOUNT_LINE_FULL = -7,
+//        CREATE_ACCOUNT_NO_ISSUER = -8
 //    };
 //
 type CreateAccountResultCode int32
@@ -2829,6 +2926,8 @@ const (
 	CreateAccountResultCodeCreateAccountAlreadyExist      CreateAccountResultCode = -4
 	CreateAccountResultCodeCreateAccountNotAuthorizedType CreateAccountResultCode = -5
 	CreateAccountResultCodeCreateAccountWrongType         CreateAccountResultCode = -6
+	CreateAccountResultCodeCreateAccountLineFull          CreateAccountResultCode = -7
+	CreateAccountResultCodeCreateAccountNoIssuer          CreateAccountResultCode = -8
 )
 
 var createAccountResultCodeMap = map[int32]string{
@@ -2839,6 +2938,8 @@ var createAccountResultCodeMap = map[int32]string{
 	-4: "CreateAccountResultCodeCreateAccountAlreadyExist",
 	-5: "CreateAccountResultCodeCreateAccountNotAuthorizedType",
 	-6: "CreateAccountResultCodeCreateAccountWrongType",
+	-7: "CreateAccountResultCodeCreateAccountLineFull",
+	-8: "CreateAccountResultCodeCreateAccountNoIssuer",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
