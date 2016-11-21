@@ -55,7 +55,13 @@ func (m Destination) MutateCreateAccount(o *xdr.CreateAccountOp) error {
 
 // MutateCreateAccount for AccountType sets the CreateAccountOp's
 // AccountType field
-func (m AccountType) MutateCreateAccount(o *xdr.CreateAccountOp) (err error) {
-	o.AccountType = xdr.Uint32(m)
-	return
-}
+// TODO: FIX IT
+// func (m CreateAccountWithScratch) MutateCreateAccount(o *xdr.CreateAccountOp) (err error) {
+// 	o.Body.AccountType = xdr.Uint32(m.AccountType)
+// 	switch m.AccountType {
+// 	case xdr.AccountTypeAccountScratchCard:
+// 		o.Body.ScratchCard.Asset = m.Asset
+// 		o.Body.ScratchCard.Amount = m.Amount
+// 	}
+// 	return
+// }

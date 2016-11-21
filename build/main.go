@@ -149,6 +149,12 @@ type MasterWeight uint32
 
 type AccountType uint32
 
+type CreateAccountWithScratch struct {
+	AccountType uint32
+	Asset  *Asset
+	Amount *uint64
+}
+
 // MaxLimit represents the maximum value that can be passed as trutline Limit
 var MaxLimit = Limit(amount.String(math.MaxInt64))
 
