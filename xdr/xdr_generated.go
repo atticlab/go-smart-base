@@ -665,16 +665,18 @@ func (e ThresholdIndexes) String() string {
 //        ACCOUNT = 0,
 //        TRUSTLINE = 1,
 //        OFFER = 2,
-//        DATA = 3
+//        DATA = 3,
+//    	REVERSED_PAYMENT = 4
 //    };
 //
 type LedgerEntryType int32
 
 const (
-	LedgerEntryTypeAccount   LedgerEntryType = 0
-	LedgerEntryTypeTrustline LedgerEntryType = 1
-	LedgerEntryTypeOffer     LedgerEntryType = 2
-	LedgerEntryTypeData      LedgerEntryType = 3
+	LedgerEntryTypeAccount         LedgerEntryType = 0
+	LedgerEntryTypeTrustline       LedgerEntryType = 1
+	LedgerEntryTypeOffer           LedgerEntryType = 2
+	LedgerEntryTypeData            LedgerEntryType = 3
+	LedgerEntryTypeReversedPayment LedgerEntryType = 4
 )
 
 var ledgerEntryTypeMap = map[int32]string{
@@ -682,6 +684,7 @@ var ledgerEntryTypeMap = map[int32]string{
 	1: "LedgerEntryTypeTrustline",
 	2: "LedgerEntryTypeOffer",
 	3: "LedgerEntryTypeData",
+	4: "LedgerEntryTypeReversedPayment",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1105,6 +1108,64 @@ type DataEntry struct {
 	Ext       DataEntryExt
 }
 
+// ReversedPaymentEntryExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type ReversedPaymentEntryExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ReversedPaymentEntryExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ReversedPaymentEntryExt
+func (u ReversedPaymentEntryExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewReversedPaymentEntryExt creates a new  ReversedPaymentEntryExt.
+func NewReversedPaymentEntryExt(v int32, value interface{}) (result ReversedPaymentEntryExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// ReversedPaymentEntry is an XDR Struct defines as:
+//
+//   struct ReversedPaymentEntry
+//    {
+//        int64 ID;       // id of reversed payment
+//
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type ReversedPaymentEntry struct {
+	Id  Int64
+	Ext ReversedPaymentEntryExt
+}
+
 // LedgerEntryData is an XDR NestedUnion defines as:
 //
 //   union switch (LedgerEntryType type)
@@ -1117,14 +1178,17 @@ type DataEntry struct {
 //            OfferEntry offer;
 //        case DATA:
 //            DataEntry data;
+//    	case REVERSED_PAYMENT:
+//    		ReversedPaymentEntry reversedPayment;
 //        }
 //
 type LedgerEntryData struct {
-	Type      LedgerEntryType
-	Account   *AccountEntry
-	TrustLine *TrustLineEntry
-	Offer     *OfferEntry
-	Data      *DataEntry
+	Type            LedgerEntryType
+	Account         *AccountEntry
+	TrustLine       *TrustLineEntry
+	Offer           *OfferEntry
+	Data            *DataEntry
+	ReversedPayment *ReversedPaymentEntry
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1145,6 +1209,8 @@ func (u LedgerEntryData) ArmForSwitch(sw int32) (string, bool) {
 		return "Offer", true
 	case LedgerEntryTypeData:
 		return "Data", true
+	case LedgerEntryTypeReversedPayment:
+		return "ReversedPayment", true
 	}
 	return "-", false
 }
@@ -1181,6 +1247,13 @@ func NewLedgerEntryData(aType LedgerEntryType, value interface{}) (result Ledger
 			return
 		}
 		result.Data = &tv
+	case LedgerEntryTypeReversedPayment:
+		tv, ok := value.(ReversedPaymentEntry)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ReversedPaymentEntry")
+			return
+		}
+		result.ReversedPayment = &tv
 	}
 	return
 }
@@ -1285,6 +1358,31 @@ func (u LedgerEntryData) GetData() (result DataEntry, ok bool) {
 	return
 }
 
+// MustReversedPayment retrieves the ReversedPayment value from the union,
+// panicing if the value is not set.
+func (u LedgerEntryData) MustReversedPayment() ReversedPaymentEntry {
+	val, ok := u.GetReversedPayment()
+
+	if !ok {
+		panic("arm ReversedPayment is not set")
+	}
+
+	return val
+}
+
+// GetReversedPayment retrieves the ReversedPayment value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerEntryData) GetReversedPayment() (result ReversedPaymentEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ReversedPayment" {
+		result = *u.ReversedPayment
+		ok = true
+	}
+
+	return
+}
+
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -1339,6 +1437,8 @@ func NewLedgerEntryExt(v int32, value interface{}) (result LedgerEntryExt, err e
 //            OfferEntry offer;
 //        case DATA:
 //            DataEntry data;
+//    	case REVERSED_PAYMENT:
+//    		ReversedPaymentEntry reversedPayment;
 //        }
 //        data;
 //
@@ -1421,7 +1521,8 @@ type DecoratedSignature struct {
 //        ACCOUNT_MERGE = 8,
 //        INFLATION = 9,
 //        MANAGE_DATA = 10,
-//    	ADMINISTRATIVE = 11
+//    	ADMINISTRATIVE = 11,
+//    	PAYMENT_REVERSAL = 12
 //    };
 //
 type OperationType int32
@@ -1439,6 +1540,7 @@ const (
 	OperationTypeInflation          OperationType = 9
 	OperationTypeManageData         OperationType = 10
 	OperationTypeAdministrative     OperationType = 11
+	OperationTypePaymentReversal    OperationType = 12
 )
 
 var operationTypeMap = map[int32]string{
@@ -1454,6 +1556,7 @@ var operationTypeMap = map[int32]string{
 	9:  "OperationTypeInflation",
 	10: "OperationTypeManageData",
 	11: "OperationTypeAdministrative",
+	12: "OperationTypePaymentReversal",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1865,6 +1968,25 @@ type AdministrativeOp struct {
 	OpData LongString
 }
 
+// PaymentReversalOp is an XDR Struct defines as:
+//
+//   struct PaymentReversalOp
+//    {
+//        AccountID paymentSource; // sender of payment to be reversed
+//        Asset asset;             // what they end up with
+//        int64 amount;            // amount they end up with
+//    	int64 commissionAmount;   // amount of commission to be returned
+//    	int64 paymentID;         // id of payment to be reversed
+//    };
+//
+type PaymentReversalOp struct {
+	PaymentSource    AccountId
+	Asset            Asset
+	Amount           Int64
+	CommissionAmount Int64
+	PaymentId        Int64
+}
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -1893,6 +2015,8 @@ type AdministrativeOp struct {
 //            ManageDataOp manageDataOp;
 //    	case ADMINISTRATIVE:
 //    		AdministrativeOp adminOp;
+//    	case PAYMENT_REVERSAL:
+//    		PaymentReversalOp paymentReversalOp;
 //        }
 //
 type OperationBody struct {
@@ -1908,6 +2032,7 @@ type OperationBody struct {
 	Destination          *AccountId
 	ManageDataOp         *ManageDataOp
 	AdminOp              *AdministrativeOp
+	PaymentReversalOp    *PaymentReversalOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1944,6 +2069,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "ManageDataOp", true
 	case OperationTypeAdministrative:
 		return "AdminOp", true
+	case OperationTypePaymentReversal:
+		return "PaymentReversalOp", true
 	}
 	return "-", false
 }
@@ -2031,6 +2158,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.AdminOp = &tv
+	case OperationTypePaymentReversal:
+		tv, ok := value.(PaymentReversalOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be PaymentReversalOp")
+			return
+		}
+		result.PaymentReversalOp = &tv
 	}
 	return
 }
@@ -2310,6 +2444,31 @@ func (u OperationBody) GetAdminOp() (result AdministrativeOp, ok bool) {
 	return
 }
 
+// MustPaymentReversalOp retrieves the PaymentReversalOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustPaymentReversalOp() PaymentReversalOp {
+	val, ok := u.GetPaymentReversalOp()
+
+	if !ok {
+		panic("arm PaymentReversalOp is not set")
+	}
+
+	return val
+}
+
+// GetPaymentReversalOp retrieves the PaymentReversalOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetPaymentReversalOp() (result PaymentReversalOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "PaymentReversalOp" {
+		result = *u.PaymentReversalOp
+		ok = true
+	}
+
+	return
+}
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -2345,6 +2504,8 @@ func (u OperationBody) GetAdminOp() (result AdministrativeOp, ok bool) {
 //            ManageDataOp manageDataOp;
 //    	case ADMINISTRATIVE:
 //    		AdministrativeOp adminOp;
+//    	case PAYMENT_REVERSAL:
+//    		PaymentReversalOp paymentReversalOp;
 //        }
 //        body;
 //    };
@@ -4292,6 +4453,139 @@ func NewAdministrativeResult(code AdministrativeResultCode, value interface{}) (
 	return
 }
 
+// PaymentReversalResultCode is an XDR Enum defines as:
+//
+//   enum PaymentReversalResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        PAYMENT_REVERSAL_SUCCESS = 0, // payment successfuly completed
+//
+//        // codes considered as "failure" for the operation
+//        PAYMENT_REVERSAL_UNDERFUNDED = -1,                   // not enough funds in source account
+//        PAYMENT_REVERSAL_SRC_NO_TRUST = -2,                  // no trust line on source account
+//        PAYMENT_REVERSAL_SRC_NOT_AUTHORIZED = -3,            // source not authorized to transfer
+//        PAYMENT_REVERSAL_NO_PAYMENT_SENDER = -4,             // destination account does not exist
+//        PAYMENT_REVERSAL_NO_PAYMENT_SENDER_TRUST = -5,       // destination missing a trust line for asset
+//        PAYMENT_REVERSAL_PAYMENT_SENDER_NOT_AUTHORIZED = -6, // destination not authorized to hold asset
+//        PAYMENT_REVERSAL_PAYMENT_SENDER_LINE_FULL = -7,      // destination would go above their limit
+//        PAYMENT_REVERSAL_NO_ISSUER = -8,                     // missing issuer on asset
+//    	PAYMENT_REVERSAL_COMMISSION_UNDERFUNDED = -9,        // not enough funds in commission account
+//    	PAYMENT_REVERSAL_PAYMENT_EXPIRED = -10,              // payment to old to reverse
+//    	PAYMENT_REVERSAL_PAYMENT_DOES_NOT_EXISTS = -11,      // payment with such id does not exists
+//    	PAYMENT_REVERSAL_INVALID_AMOUNT = -12,               // amount is not equal to amount in payment
+//    	PAYMENT_REVERSAL_INVALID_COMMISSION = -13,           // commission is not equal to commission in payment
+//    	PAYMENT_REVERSAL_INVALID_PAYMENT_SENDER = -14,       // payment sender is not equal to source in payment
+//    	PAYMENT_REVERSAL_INVALID_SOURCE = -15,               // source of reversal is not equal payment destination
+//    	PAYMENT_REVERSAL_INVALID_ASSET = -16,                // asset is not equal to asset in payment
+//    	PAYMENT_REVERSAL_MALFORMED = -17,                    // reversal payment is malformed in some way
+//    	PAYMENT_REVERSAL_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
+//    	PAYMENT_REVERSAL_ALREADY_REVERSED = -19              // payment already have been reversed
+//    };
+//
+type PaymentReversalResultCode int32
+
+const (
+	PaymentReversalResultCodePaymentReversalSuccess                    PaymentReversalResultCode = 0
+	PaymentReversalResultCodePaymentReversalUnderfunded                PaymentReversalResultCode = -1
+	PaymentReversalResultCodePaymentReversalSrcNoTrust                 PaymentReversalResultCode = -2
+	PaymentReversalResultCodePaymentReversalSrcNotAuthorized           PaymentReversalResultCode = -3
+	PaymentReversalResultCodePaymentReversalNoPaymentSender            PaymentReversalResultCode = -4
+	PaymentReversalResultCodePaymentReversalNoPaymentSenderTrust       PaymentReversalResultCode = -5
+	PaymentReversalResultCodePaymentReversalPaymentSenderNotAuthorized PaymentReversalResultCode = -6
+	PaymentReversalResultCodePaymentReversalPaymentSenderLineFull      PaymentReversalResultCode = -7
+	PaymentReversalResultCodePaymentReversalNoIssuer                   PaymentReversalResultCode = -8
+	PaymentReversalResultCodePaymentReversalCommissionUnderfunded      PaymentReversalResultCode = -9
+	PaymentReversalResultCodePaymentReversalPaymentExpired             PaymentReversalResultCode = -10
+	PaymentReversalResultCodePaymentReversalPaymentDoesNotExists       PaymentReversalResultCode = -11
+	PaymentReversalResultCodePaymentReversalInvalidAmount              PaymentReversalResultCode = -12
+	PaymentReversalResultCodePaymentReversalInvalidCommission          PaymentReversalResultCode = -13
+	PaymentReversalResultCodePaymentReversalInvalidPaymentSender       PaymentReversalResultCode = -14
+	PaymentReversalResultCodePaymentReversalInvalidSource              PaymentReversalResultCode = -15
+	PaymentReversalResultCodePaymentReversalInvalidAsset               PaymentReversalResultCode = -16
+	PaymentReversalResultCodePaymentReversalMalformed                  PaymentReversalResultCode = -17
+	PaymentReversalResultCodePaymentReversalNotAllowed                 PaymentReversalResultCode = -18
+	PaymentReversalResultCodePaymentReversalAlreadyReversed            PaymentReversalResultCode = -19
+)
+
+var paymentReversalResultCodeMap = map[int32]string{
+	0:   "PaymentReversalResultCodePaymentReversalSuccess",
+	-1:  "PaymentReversalResultCodePaymentReversalUnderfunded",
+	-2:  "PaymentReversalResultCodePaymentReversalSrcNoTrust",
+	-3:  "PaymentReversalResultCodePaymentReversalSrcNotAuthorized",
+	-4:  "PaymentReversalResultCodePaymentReversalNoPaymentSender",
+	-5:  "PaymentReversalResultCodePaymentReversalNoPaymentSenderTrust",
+	-6:  "PaymentReversalResultCodePaymentReversalPaymentSenderNotAuthorized",
+	-7:  "PaymentReversalResultCodePaymentReversalPaymentSenderLineFull",
+	-8:  "PaymentReversalResultCodePaymentReversalNoIssuer",
+	-9:  "PaymentReversalResultCodePaymentReversalCommissionUnderfunded",
+	-10: "PaymentReversalResultCodePaymentReversalPaymentExpired",
+	-11: "PaymentReversalResultCodePaymentReversalPaymentDoesNotExists",
+	-12: "PaymentReversalResultCodePaymentReversalInvalidAmount",
+	-13: "PaymentReversalResultCodePaymentReversalInvalidCommission",
+	-14: "PaymentReversalResultCodePaymentReversalInvalidPaymentSender",
+	-15: "PaymentReversalResultCodePaymentReversalInvalidSource",
+	-16: "PaymentReversalResultCodePaymentReversalInvalidAsset",
+	-17: "PaymentReversalResultCodePaymentReversalMalformed",
+	-18: "PaymentReversalResultCodePaymentReversalNotAllowed",
+	-19: "PaymentReversalResultCodePaymentReversalAlreadyReversed",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for PaymentReversalResultCode
+func (e PaymentReversalResultCode) ValidEnum(v int32) bool {
+	_, ok := paymentReversalResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e PaymentReversalResultCode) String() string {
+	name, _ := paymentReversalResultCodeMap[int32(e)]
+	return name
+}
+
+// PaymentReversalResult is an XDR Union defines as:
+//
+//   union PaymentReversalResult switch (PaymentReversalResultCode code)
+//    {
+//    case PAYMENT_REVERSAL_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type PaymentReversalResult struct {
+	Code PaymentReversalResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u PaymentReversalResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of PaymentReversalResult
+func (u PaymentReversalResult) ArmForSwitch(sw int32) (string, bool) {
+	switch PaymentReversalResultCode(sw) {
+	case PaymentReversalResultCodePaymentReversalSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewPaymentReversalResult creates a new  PaymentReversalResult.
+func NewPaymentReversalResult(code PaymentReversalResultCode, value interface{}) (result PaymentReversalResult, err error) {
+	result.Code = code
+	switch PaymentReversalResultCode(code) {
+	case PaymentReversalResultCodePaymentReversalSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -4357,6 +4651,8 @@ func (e OperationResultCode) String() string {
 //            ManageDataResult manageDataResult;
 //    	case ADMINISTRATIVE:
 //    		AdministrativeResult adminResult;
+//    	case PAYMENT_REVERSAL:
+//    		PaymentReversalResult paymentReversalResult;
 //        }
 //
 type OperationResultTr struct {
@@ -4373,6 +4669,7 @@ type OperationResultTr struct {
 	InflationResult          *InflationResult
 	ManageDataResult         *ManageDataResult
 	AdminResult              *AdministrativeResult
+	PaymentReversalResult    *PaymentReversalResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -4409,6 +4706,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "ManageDataResult", true
 	case OperationTypeAdministrative:
 		return "AdminResult", true
+	case OperationTypePaymentReversal:
+		return "PaymentReversalResult", true
 	}
 	return "-", false
 }
@@ -4501,6 +4800,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.AdminResult = &tv
+	case OperationTypePaymentReversal:
+		tv, ok := value.(PaymentReversalResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be PaymentReversalResult")
+			return
+		}
+		result.PaymentReversalResult = &tv
 	}
 	return
 }
@@ -4805,6 +5111,31 @@ func (u OperationResultTr) GetAdminResult() (result AdministrativeResult, ok boo
 	return
 }
 
+// MustPaymentReversalResult retrieves the PaymentReversalResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustPaymentReversalResult() PaymentReversalResult {
+	val, ok := u.GetPaymentReversalResult()
+
+	if !ok {
+		panic("arm PaymentReversalResult is not set")
+	}
+
+	return val
+}
+
+// GetPaymentReversalResult retrieves the PaymentReversalResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetPaymentReversalResult() (result PaymentReversalResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "PaymentReversalResult" {
+		result = *u.PaymentReversalResult
+		ok = true
+	}
+
+	return
+}
+
 // OperationResult is an XDR Union defines as:
 //
 //   union OperationResult switch (OperationResultCode code)
@@ -4836,6 +5167,8 @@ func (u OperationResultTr) GetAdminResult() (result AdministrativeResult, ok boo
 //            ManageDataResult manageDataResult;
 //    	case ADMINISTRATIVE:
 //    		AdministrativeResult adminResult;
+//    	case PAYMENT_REVERSAL:
+//    		PaymentReversalResult paymentReversalResult;
 //        }
 //        tr;
 //    default:
@@ -5481,6 +5814,17 @@ type LedgerKeyData struct {
 	DataName  String64
 }
 
+// LedgerKeyReversedPayment is an XDR NestedStruct defines as:
+//
+//   struct
+//    	{
+//    		int64 ID;
+//    	}
+//
+type LedgerKeyReversedPayment struct {
+	Id Int64
+}
+
 // LedgerKey is an XDR Union defines as:
 //
 //   union LedgerKey switch (LedgerEntryType type)
@@ -5511,14 +5855,20 @@ type LedgerKeyData struct {
 //            AccountID accountID;
 //            string64 dataName;
 //        } data;
+//    case REVERSED_PAYMENT:
+//    	struct
+//    	{
+//    		int64 ID;
+//    	} reversedPayment;
 //    };
 //
 type LedgerKey struct {
-	Type      LedgerEntryType
-	Account   *LedgerKeyAccount
-	TrustLine *LedgerKeyTrustLine
-	Offer     *LedgerKeyOffer
-	Data      *LedgerKeyData
+	Type            LedgerEntryType
+	Account         *LedgerKeyAccount
+	TrustLine       *LedgerKeyTrustLine
+	Offer           *LedgerKeyOffer
+	Data            *LedgerKeyData
+	ReversedPayment *LedgerKeyReversedPayment
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5539,6 +5889,8 @@ func (u LedgerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "Offer", true
 	case LedgerEntryTypeData:
 		return "Data", true
+	case LedgerEntryTypeReversedPayment:
+		return "ReversedPayment", true
 	}
 	return "-", false
 }
@@ -5575,6 +5927,13 @@ func NewLedgerKey(aType LedgerEntryType, value interface{}) (result LedgerKey, e
 			return
 		}
 		result.Data = &tv
+	case LedgerEntryTypeReversedPayment:
+		tv, ok := value.(LedgerKeyReversedPayment)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerKeyReversedPayment")
+			return
+		}
+		result.ReversedPayment = &tv
 	}
 	return
 }
@@ -5673,6 +6032,31 @@ func (u LedgerKey) GetData() (result LedgerKeyData, ok bool) {
 
 	if armName == "Data" {
 		result = *u.Data
+		ok = true
+	}
+
+	return
+}
+
+// MustReversedPayment retrieves the ReversedPayment value from the union,
+// panicing if the value is not set.
+func (u LedgerKey) MustReversedPayment() LedgerKeyReversedPayment {
+	val, ok := u.GetReversedPayment()
+
+	if !ok {
+		panic("arm ReversedPayment is not set")
+	}
+
+	return val
+}
+
+// GetReversedPayment retrieves the ReversedPayment value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerKey) GetReversedPayment() (result LedgerKeyReversedPayment, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ReversedPayment" {
+		result = *u.ReversedPayment
 		ok = true
 	}
 
