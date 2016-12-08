@@ -293,6 +293,18 @@ func (m PaymentBuilder) MutateTransaction(o *TransactionBuilder) error {
 	return m.Err
 }
 
+// MutateTransaction for PaymentReversalBuilder causes the underylying PaymentReversalOp
+// to be added to the operation list for the provided transaction
+func (m PaymentReversalBuilder) MutateTransaction(o *TransactionBuilder) error {
+	if m.Err != nil {
+		return m.Err
+	}
+
+	m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypePaymentReversal, m.P)
+	o.TX.Operations = append(o.TX.Operations, m.O)
+	return m.Err
+}
+
 // MutateTransaction for SetOptionsBuilder causes the underylying
 // SetOptionsOp to be added to the operation list for the provided
 // transaction
