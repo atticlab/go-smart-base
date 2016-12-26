@@ -342,7 +342,8 @@ type DataValue []byte
 //        ACCOUNT_EXCHANGE_AGENT = 5,
 //        ACCOUNT_BANK = 6,
 //        ACCOUNT_SCRATCH_CARD = 7,
-//        ACCOUNT_GENERAL_AGENT = 8
+//        ACCOUNT_GENERAL_AGENT = 8,
+//        ACCOUNT_COMMISSION = 9
 //    };
 //
 type AccountType int32
@@ -357,6 +358,7 @@ const (
 	AccountTypeAccountBank              AccountType = 6
 	AccountTypeAccountScratchCard       AccountType = 7
 	AccountTypeAccountGeneralAgent      AccountType = 8
+	AccountTypeAccountCommission        AccountType = 9
 )
 
 var accountTypeMap = map[int32]string{
@@ -369,6 +371,7 @@ var accountTypeMap = map[int32]string{
 	6: "AccountTypeAccountBank",
 	7: "AccountTypeAccountScratchCard",
 	8: "AccountTypeAccountGeneralAgent",
+	9: "AccountTypeAccountCommission",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
