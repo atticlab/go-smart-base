@@ -87,7 +87,8 @@ enum LedgerEntryType
     ACCOUNT = 0,
     TRUSTLINE = 1,
     OFFER = 2,
-    DATA = 3
+    DATA = 3,
+	REVERSED_PAYMENT = 4
 };
 
 struct Signer
@@ -235,6 +236,22 @@ struct DataEntry
     ext;
 };
 
+/* ReversedPaymentEntry
+    Reversed payment data.
+*/
+struct ReversedPaymentEntry
+{
+    int64 ID;       // id of reversed payment
+
+    // reserved for future use
+    union switch (int v)
+    {
+    case 0:
+        void;
+    }
+    ext;
+};
+
 
 struct LedgerEntry
 {
@@ -250,6 +267,8 @@ struct LedgerEntry
         OfferEntry offer;
     case DATA:
         DataEntry data;
+	case REVERSED_PAYMENT:
+		ReversedPaymentEntry reversedPayment;
     }
     data;
 

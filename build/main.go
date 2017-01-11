@@ -114,6 +114,18 @@ type CreditAmount struct {
 	Amount string
 }
 
+type CommissionAmount struct {
+	Amount string
+}
+
+type PaymentID struct {
+	ID int64
+}
+
+type PaymentSender struct {
+	AddressOrSeed string
+}
+
 // Defaults is a mutator that sets defaults
 type Defaults struct{}
 
