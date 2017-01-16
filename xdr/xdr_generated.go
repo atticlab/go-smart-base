@@ -1521,8 +1521,9 @@ type DecoratedSignature struct {
 //        ACCOUNT_MERGE = 8,
 //        INFLATION = 9,
 //        MANAGE_DATA = 10,
-//    	ADMINISTRATIVE = 11,
-//    	PAYMENT_REVERSAL = 12
+//        ADMINISTRATIVE = 11,
+//        PAYMENT_REVERSAL = 12,
+//        EXTERNAL_PAYMENT = 13
 //    };
 //
 type OperationType int32
@@ -1541,6 +1542,7 @@ const (
 	OperationTypeManageData         OperationType = 10
 	OperationTypeAdministrative     OperationType = 11
 	OperationTypePaymentReversal    OperationType = 12
+	OperationTypeExternalPayment    OperationType = 13
 )
 
 var operationTypeMap = map[int32]string{
@@ -1557,6 +1559,7 @@ var operationTypeMap = map[int32]string{
 	10: "OperationTypeManageData",
 	11: "OperationTypeAdministrative",
 	12: "OperationTypePaymentReversal",
+	13: "OperationTypeExternalPayment",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1576,7 +1579,7 @@ func (e OperationType) String() string {
 //
 //   struct ScratchCard
 //    {
-//    	Asset asset;           // what they end up with
+//        Asset asset;           // what they end up with
 //        int64 amount;          // amount they end up with
 //    };
 //
@@ -1591,8 +1594,8 @@ type ScratchCard struct {
 //        {
 //        case ACCOUNT_SCRATCH_CARD:
 //            ScratchCard scratchCard;
-//    	default:
-//    		void;
+//        default:
+//            void;
 //        }
 //
 type CreateAccountOpBody struct {
@@ -1668,8 +1671,8 @@ func (u CreateAccountOpBody) GetScratchCard() (result ScratchCard, ok bool) {
 //        {
 //        case ACCOUNT_SCRATCH_CARD:
 //            ScratchCard scratchCard;
-//    	default:
-//    		void;
+//        default:
+//            void;
 //        }
 //        body;
 //
@@ -1693,6 +1696,25 @@ type PaymentOp struct {
 	Destination AccountId
 	Asset       Asset
 	Amount      Int64
+}
+
+// ExternalPaymentOp is an XDR Struct defines as:
+//
+//   struct ExternalPaymentOp
+//    {
+//        AccountID exchangeAgent;        // exchange agent account id
+//        AccountID destinationBank;      // recipient bank of the payment
+//        AccountID destinationAccount;   // recipient account of the payment
+//        Asset asset;                    // what they end up with
+//        int64 amount;                   // amount they end up with
+//    };
+//
+type ExternalPaymentOp struct {
+	ExchangeAgent      AccountId
+	DestinationBank    AccountId
+	DestinationAccount AccountId
+	Asset              Asset
+	Amount             Int64
 }
 
 // PathPaymentOp is an XDR Struct defines as:
@@ -1961,7 +1983,7 @@ type ManageDataOp struct {
 //
 //   struct AdministrativeOp
 //    {
-//    	longString opData;
+//        longString opData;
 //    };
 //
 type AdministrativeOp struct {
@@ -1975,8 +1997,8 @@ type AdministrativeOp struct {
 //        AccountID paymentSource; // sender of payment to be reversed
 //        Asset asset;             // what they end up with
 //        int64 amount;            // amount they end up with
-//    	int64 commissionAmount;   // amount of commission to be returned
-//    	int64 paymentID;         // id of payment to be reversed
+//        int64 commissionAmount;   // amount of commission to be returned
+//        int64 paymentID;         // id of payment to be reversed
 //    };
 //
 type PaymentReversalOp struct {
@@ -2013,10 +2035,12 @@ type PaymentReversalOp struct {
 //            void;
 //        case MANAGE_DATA:
 //            ManageDataOp manageDataOp;
-//    	case ADMINISTRATIVE:
-//    		AdministrativeOp adminOp;
-//    	case PAYMENT_REVERSAL:
-//    		PaymentReversalOp paymentReversalOp;
+//        case ADMINISTRATIVE:
+//            AdministrativeOp adminOp;
+//        case PAYMENT_REVERSAL:
+//            PaymentReversalOp paymentReversalOp;
+//        case EXTERNAL_PAYMENT:
+//            ExternalPaymentOp externalPaymentOp;
 //        }
 //
 type OperationBody struct {
@@ -2033,6 +2057,7 @@ type OperationBody struct {
 	ManageDataOp         *ManageDataOp
 	AdminOp              *AdministrativeOp
 	PaymentReversalOp    *PaymentReversalOp
+	ExternalPaymentOp    *ExternalPaymentOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2071,6 +2096,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "AdminOp", true
 	case OperationTypePaymentReversal:
 		return "PaymentReversalOp", true
+	case OperationTypeExternalPayment:
+		return "ExternalPaymentOp", true
 	}
 	return "-", false
 }
@@ -2165,6 +2192,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.PaymentReversalOp = &tv
+	case OperationTypeExternalPayment:
+		tv, ok := value.(ExternalPaymentOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ExternalPaymentOp")
+			return
+		}
+		result.ExternalPaymentOp = &tv
 	}
 	return
 }
@@ -2469,6 +2503,31 @@ func (u OperationBody) GetPaymentReversalOp() (result PaymentReversalOp, ok bool
 	return
 }
 
+// MustExternalPaymentOp retrieves the ExternalPaymentOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustExternalPaymentOp() ExternalPaymentOp {
+	val, ok := u.GetExternalPaymentOp()
+
+	if !ok {
+		panic("arm ExternalPaymentOp is not set")
+	}
+
+	return val
+}
+
+// GetExternalPaymentOp retrieves the ExternalPaymentOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetExternalPaymentOp() (result ExternalPaymentOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ExternalPaymentOp" {
+		result = *u.ExternalPaymentOp
+		ok = true
+	}
+
+	return
+}
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -2502,10 +2561,12 @@ func (u OperationBody) GetPaymentReversalOp() (result PaymentReversalOp, ok bool
 //            void;
 //        case MANAGE_DATA:
 //            ManageDataOp manageDataOp;
-//    	case ADMINISTRATIVE:
-//    		AdministrativeOp adminOp;
-//    	case PAYMENT_REVERSAL:
-//    		PaymentReversalOp paymentReversalOp;
+//        case ADMINISTRATIVE:
+//            AdministrativeOp adminOp;
+//        case PAYMENT_REVERSAL:
+//            PaymentReversalOp paymentReversalOp;
+//        case EXTERNAL_PAYMENT:
+//            ExternalPaymentOp externalPaymentOp;
 //        }
 //        body;
 //    };
@@ -2869,10 +2930,10 @@ func (e OperationFeeType) String() string {
 // OperationFeeFeeExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
-//    		{
-//    		case 0:
-//    			void;
-//    		}
+//            {
+//            case 0:
+//                void;
+//            }
 //
 type OperationFeeFeeExt struct {
 	V int32
@@ -2910,15 +2971,15 @@ func NewOperationFeeFeeExt(v int32, value interface{}) (result OperationFeeFeeEx
 //        {
 //            Asset asset;
 //            int64 amountToCharge;
-//    		int64* percentFee;
-//    		int64* flatFee;
-//    		// reserved for future use
-//    		union switch (int v)
-//    		{
-//    		case 0:
-//    			void;
-//    		}
-//    		ext;
+//            int64* percentFee;
+//            int64* flatFee;
+//            // reserved for future use
+//            union switch (int v)
+//            {
+//            case 0:
+//                void;
+//            }
+//            ext;
 //        }
 //
 type OperationFeeFee struct {
@@ -2940,15 +3001,15 @@ type OperationFeeFee struct {
 //        {
 //            Asset asset;
 //            int64 amountToCharge;
-//    		int64* percentFee;
-//    		int64* flatFee;
-//    		// reserved for future use
-//    		union switch (int v)
-//    		{
-//    		case 0:
-//    			void;
-//    		}
-//    		ext;
+//            int64* percentFee;
+//            int64* flatFee;
+//            // reserved for future use
+//            union switch (int v)
+//            {
+//            case 0:
+//                void;
+//            }
+//            ext;
 //        } fee;
 //    };
 //
@@ -3023,7 +3084,7 @@ func (u OperationFee) GetFee() (result OperationFeeFee, ok bool) {
 //    {
 //        Transaction tx;
 //        DecoratedSignature signatures<20>;
-//    	OperationFee operationFees<100>; // actual fees charged for the transaction
+//        OperationFee operationFees<100>; // actual fees charged for the transaction
 //    };
 //
 type TransactionEnvelope struct {
@@ -4469,17 +4530,17 @@ func NewAdministrativeResult(code AdministrativeResultCode, value interface{}) (
 //        PAYMENT_REVERSAL_PAYMENT_SENDER_NOT_AUTHORIZED = -6, // destination not authorized to hold asset
 //        PAYMENT_REVERSAL_PAYMENT_SENDER_LINE_FULL = -7,      // destination would go above their limit
 //        PAYMENT_REVERSAL_NO_ISSUER = -8,                     // missing issuer on asset
-//    	PAYMENT_REVERSAL_COMMISSION_UNDERFUNDED = -9,        // not enough funds in commission account
-//    	PAYMENT_REVERSAL_PAYMENT_EXPIRED = -10,              // payment to old to reverse
-//    	PAYMENT_REVERSAL_PAYMENT_DOES_NOT_EXISTS = -11,      // payment with such id does not exists
-//    	PAYMENT_REVERSAL_INVALID_AMOUNT = -12,               // amount is not equal to amount in payment
-//    	PAYMENT_REVERSAL_INVALID_COMMISSION = -13,           // commission is not equal to commission in payment
-//    	PAYMENT_REVERSAL_INVALID_PAYMENT_SENDER = -14,       // payment sender is not equal to source in payment
-//    	PAYMENT_REVERSAL_INVALID_SOURCE = -15,               // source of reversal is not equal payment destination
-//    	PAYMENT_REVERSAL_INVALID_ASSET = -16,                // asset is not equal to asset in payment
-//    	PAYMENT_REVERSAL_MALFORMED = -17,                    // reversal payment is malformed in some way
-//    	PAYMENT_REVERSAL_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
-//    	PAYMENT_REVERSAL_ALREADY_REVERSED = -19              // payment already have been reversed
+//        PAYMENT_REVERSAL_COMMISSION_UNDERFUNDED = -9,        // not enough funds in commission account
+//        PAYMENT_REVERSAL_PAYMENT_EXPIRED = -10,              // payment to old to reverse
+//        PAYMENT_REVERSAL_PAYMENT_DOES_NOT_EXISTS = -11,      // payment with such id does not exists
+//        PAYMENT_REVERSAL_INVALID_AMOUNT = -12,               // amount is not equal to amount in payment
+//        PAYMENT_REVERSAL_INVALID_COMMISSION = -13,           // commission is not equal to commission in payment
+//        PAYMENT_REVERSAL_INVALID_PAYMENT_SENDER = -14,       // payment sender is not equal to source in payment
+//        PAYMENT_REVERSAL_INVALID_SOURCE = -15,               // source of reversal is not equal payment destination
+//        PAYMENT_REVERSAL_INVALID_ASSET = -16,                // asset is not equal to asset in payment
+//        PAYMENT_REVERSAL_MALFORMED = -17,                    // reversal payment is malformed in some way
+//        PAYMENT_REVERSAL_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
+//        PAYMENT_REVERSAL_ALREADY_REVERSED = -19              // payment already have been reversed
 //    };
 //
 type PaymentReversalResultCode int32
@@ -4630,6 +4691,7 @@ func (e OperationResultCode) String() string {
 //        case CREATE_ACCOUNT:
 //            CreateAccountResult createAccountResult;
 //        case PAYMENT:
+//        case EXTERNAL_PAYMENT:
 //            PaymentResult paymentResult;
 //        case PATH_PAYMENT:
 //            PathPaymentResult pathPaymentResult;
@@ -4649,10 +4711,10 @@ func (e OperationResultCode) String() string {
 //            InflationResult inflationResult;
 //        case MANAGE_DATA:
 //            ManageDataResult manageDataResult;
-//    	case ADMINISTRATIVE:
-//    		AdministrativeResult adminResult;
-//    	case PAYMENT_REVERSAL:
-//    		PaymentReversalResult paymentReversalResult;
+//        case ADMINISTRATIVE:
+//            AdministrativeResult adminResult;
+//        case PAYMENT_REVERSAL:
+//            PaymentReversalResult paymentReversalResult;
 //        }
 //
 type OperationResultTr struct {
@@ -4685,6 +4747,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 	case OperationTypeCreateAccount:
 		return "CreateAccountResult", true
 	case OperationTypePayment:
+		return "PaymentResult", true
+	case OperationTypeExternalPayment:
 		return "PaymentResult", true
 	case OperationTypePathPayment:
 		return "PathPaymentResult", true
@@ -4724,6 +4788,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 		}
 		result.CreateAccountResult = &tv
 	case OperationTypePayment:
+		tv, ok := value.(PaymentResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be PaymentResult")
+			return
+		}
+		result.PaymentResult = &tv
+	case OperationTypeExternalPayment:
 		tv, ok := value.(PaymentResult)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be PaymentResult")
@@ -5146,6 +5217,7 @@ func (u OperationResultTr) GetPaymentReversalResult() (result PaymentReversalRes
 //        case CREATE_ACCOUNT:
 //            CreateAccountResult createAccountResult;
 //        case PAYMENT:
+//        case EXTERNAL_PAYMENT:
 //            PaymentResult paymentResult;
 //        case PATH_PAYMENT:
 //            PathPaymentResult pathPaymentResult;
@@ -5165,10 +5237,10 @@ func (u OperationResultTr) GetPaymentReversalResult() (result PaymentReversalRes
 //            InflationResult inflationResult;
 //        case MANAGE_DATA:
 //            ManageDataResult manageDataResult;
-//    	case ADMINISTRATIVE:
-//    		AdministrativeResult adminResult;
-//    	case PAYMENT_REVERSAL:
-//    		PaymentReversalResult paymentReversalResult;
+//        case ADMINISTRATIVE:
+//            AdministrativeResult adminResult;
+//        case PAYMENT_REVERSAL:
+//            PaymentReversalResult paymentReversalResult;
 //        }
 //        tr;
 //    default:
