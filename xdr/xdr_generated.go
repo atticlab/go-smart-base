@@ -306,11 +306,21 @@ type Thresholds [4]byte
 //
 type String32 string
 
+// XDRMaxSize implements the Sized interface for String32
+func (e String32) XDRMaxSize() int {
+	return 32
+}
+
 // String64 is an XDR Typedef defines as:
 //
 //   typedef string string64<64>;
 //
 type String64 string
+
+// XDRMaxSize implements the Sized interface for String64
+func (e String64) XDRMaxSize() int {
+	return 64
+}
 
 // LongString is an XDR Typedef defines as:
 //
@@ -669,7 +679,8 @@ func (e ThresholdIndexes) String() string {
 //        TRUSTLINE = 1,
 //        OFFER = 2,
 //        DATA = 3,
-//    	REVERSED_PAYMENT = 4
+//    	REVERSED_PAYMENT = 4,
+//        REFUNDED_PAYMENT = 5
 //    };
 //
 type LedgerEntryType int32
@@ -680,6 +691,7 @@ const (
 	LedgerEntryTypeOffer           LedgerEntryType = 2
 	LedgerEntryTypeData            LedgerEntryType = 3
 	LedgerEntryTypeReversedPayment LedgerEntryType = 4
+	LedgerEntryTypeRefundedPayment LedgerEntryType = 5
 )
 
 var ledgerEntryTypeMap = map[int32]string{
@@ -688,6 +700,7 @@ var ledgerEntryTypeMap = map[int32]string{
 	2: "LedgerEntryTypeOffer",
 	3: "LedgerEntryTypeData",
 	4: "LedgerEntryTypeReversedPayment",
+	5: "LedgerEntryTypeRefundedPayment",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -839,7 +852,7 @@ type AccountEntry struct {
 	HomeDomain    String32
 	AccountType   Uint32
 	Thresholds    Thresholds
-	Signers       []Signer
+	Signers       []Signer `xdrmaxsize:"200"`
 	Ext           AccountEntryExt
 }
 
@@ -1153,7 +1166,7 @@ func NewReversedPaymentEntryExt(v int32, value interface{}) (result ReversedPaym
 //
 //   struct ReversedPaymentEntry
 //    {
-//        int64 ID;       // id of reversed payment
+//        int64 rID;       // id of reversed payment
 //
 //        // reserved for future use
 //        union switch (int v)
@@ -1165,8 +1178,71 @@ func NewReversedPaymentEntryExt(v int32, value interface{}) (result ReversedPaym
 //    };
 //
 type ReversedPaymentEntry struct {
-	Id  Int64
+	RId Int64
 	Ext ReversedPaymentEntryExt
+}
+
+// RefundEntryExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type RefundEntryExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u RefundEntryExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of RefundEntryExt
+func (u RefundEntryExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewRefundEntryExt creates a new  RefundEntryExt.
+func NewRefundEntryExt(v int32, value interface{}) (result RefundEntryExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// RefundEntry is an XDR Struct defines as:
+//
+//   struct RefundEntry
+//    {
+//        int64 rID;                  // id of refund
+//        Asset asset;                // type of asset (with issuer)
+//        int64 refundedAmount;       // already refunded amount
+//        int64 totalOriginalAmount;  // the amount of the original operation
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type RefundEntry struct {
+	RId                 Int64
+	Asset               Asset
+	RefundedAmount      Int64
+	TotalOriginalAmount Int64
+	Ext                 RefundEntryExt
 }
 
 // LedgerEntryData is an XDR NestedUnion defines as:
@@ -1183,6 +1259,8 @@ type ReversedPaymentEntry struct {
 //            DataEntry data;
 //    	case REVERSED_PAYMENT:
 //    		ReversedPaymentEntry reversedPayment;
+//        case REFUNDED_PAYMENT:
+//            RefundEntry refundedPayment;
 //        }
 //
 type LedgerEntryData struct {
@@ -1192,6 +1270,7 @@ type LedgerEntryData struct {
 	Offer           *OfferEntry
 	Data            *DataEntry
 	ReversedPayment *ReversedPaymentEntry
+	RefundedPayment *RefundEntry
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1214,6 +1293,8 @@ func (u LedgerEntryData) ArmForSwitch(sw int32) (string, bool) {
 		return "Data", true
 	case LedgerEntryTypeReversedPayment:
 		return "ReversedPayment", true
+	case LedgerEntryTypeRefundedPayment:
+		return "RefundedPayment", true
 	}
 	return "-", false
 }
@@ -1257,6 +1338,13 @@ func NewLedgerEntryData(aType LedgerEntryType, value interface{}) (result Ledger
 			return
 		}
 		result.ReversedPayment = &tv
+	case LedgerEntryTypeRefundedPayment:
+		tv, ok := value.(RefundEntry)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be RefundEntry")
+			return
+		}
+		result.RefundedPayment = &tv
 	}
 	return
 }
@@ -1386,6 +1474,31 @@ func (u LedgerEntryData) GetReversedPayment() (result ReversedPaymentEntry, ok b
 	return
 }
 
+// MustRefundedPayment retrieves the RefundedPayment value from the union,
+// panicing if the value is not set.
+func (u LedgerEntryData) MustRefundedPayment() RefundEntry {
+	val, ok := u.GetRefundedPayment()
+
+	if !ok {
+		panic("arm RefundedPayment is not set")
+	}
+
+	return val
+}
+
+// GetRefundedPayment retrieves the RefundedPayment value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerEntryData) GetRefundedPayment() (result RefundEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RefundedPayment" {
+		result = *u.RefundedPayment
+		ok = true
+	}
+
+	return
+}
+
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -1442,6 +1555,8 @@ func NewLedgerEntryExt(v int32, value interface{}) (result LedgerEntryExt, err e
 //            DataEntry data;
 //    	case REVERSED_PAYMENT:
 //    		ReversedPaymentEntry reversedPayment;
+//        case REFUNDED_PAYMENT:
+//            RefundEntry refundedPayment;
 //        }
 //        data;
 //
@@ -1525,7 +1640,8 @@ type DecoratedSignature struct {
 //        INFLATION = 9,
 //        MANAGE_DATA = 10,
 //    	ADMINISTRATIVE = 11,
-//    	PAYMENT_REVERSAL = 12
+//    	PAYMENT_REVERSAL = 12,
+//        REFUND = 13
 //    };
 //
 type OperationType int32
@@ -1544,6 +1660,7 @@ const (
 	OperationTypeManageData         OperationType = 10
 	OperationTypeAdministrative     OperationType = 11
 	OperationTypePaymentReversal    OperationType = 12
+	OperationTypeRefund             OperationType = 13
 )
 
 var operationTypeMap = map[int32]string{
@@ -1560,6 +1677,7 @@ var operationTypeMap = map[int32]string{
 	10: "OperationTypeManageData",
 	11: "OperationTypeAdministrative",
 	12: "OperationTypePaymentReversal",
+	13: "OperationTypeRefund",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1720,7 +1838,7 @@ type PathPaymentOp struct {
 	Destination AccountId
 	DestAsset   Asset
 	DestAmount  Int64
-	Path        []Asset
+	Path        []Asset `xdrmaxsize:"5"`
 }
 
 // ManageOfferOp is an XDR Struct defines as:
@@ -1990,6 +2108,25 @@ type PaymentReversalOp struct {
 	PaymentId        Int64
 }
 
+// RefundOp is an XDR Struct defines as:
+//
+//   struct RefundOp
+//    {
+//        AccountID paymentSource; // sender of payment to be refunded
+//        Asset asset;             // what they end up with
+//        int64 amount;            // amount they end up with
+//        int64 originalAmount;    // amount of the original transaction
+//        int64 paymentID;         // id of payment to be refunded
+//    };
+//
+type RefundOp struct {
+	PaymentSource  AccountId
+	Asset          Asset
+	Amount         Int64
+	OriginalAmount Int64
+	PaymentId      Int64
+}
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -2020,6 +2157,8 @@ type PaymentReversalOp struct {
 //    		AdministrativeOp adminOp;
 //    	case PAYMENT_REVERSAL:
 //    		PaymentReversalOp paymentReversalOp;
+//        case REFUND:
+//            RefundOp refundOp;
 //        }
 //
 type OperationBody struct {
@@ -2036,6 +2175,7 @@ type OperationBody struct {
 	ManageDataOp         *ManageDataOp
 	AdminOp              *AdministrativeOp
 	PaymentReversalOp    *PaymentReversalOp
+	RefundOp             *RefundOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2074,6 +2214,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "AdminOp", true
 	case OperationTypePaymentReversal:
 		return "PaymentReversalOp", true
+	case OperationTypeRefund:
+		return "RefundOp", true
 	}
 	return "-", false
 }
@@ -2168,6 +2310,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.PaymentReversalOp = &tv
+	case OperationTypeRefund:
+		tv, ok := value.(RefundOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be RefundOp")
+			return
+		}
+		result.RefundOp = &tv
 	}
 	return
 }
@@ -2472,6 +2621,31 @@ func (u OperationBody) GetPaymentReversalOp() (result PaymentReversalOp, ok bool
 	return
 }
 
+// MustRefundOp retrieves the RefundOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustRefundOp() RefundOp {
+	val, ok := u.GetRefundOp()
+
+	if !ok {
+		panic("arm RefundOp is not set")
+	}
+
+	return val
+}
+
+// GetRefundOp retrieves the RefundOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetRefundOp() (result RefundOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RefundOp" {
+		result = *u.RefundOp
+		ok = true
+	}
+
+	return
+}
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -2509,6 +2683,8 @@ func (u OperationBody) GetPaymentReversalOp() (result PaymentReversalOp, ok bool
 //    		AdministrativeOp adminOp;
 //    	case PAYMENT_REVERSAL:
 //    		PaymentReversalOp paymentReversalOp;
+//        case REFUND:
+//            RefundOp refundOp;
 //        }
 //        body;
 //    };
@@ -2832,7 +3008,7 @@ type Transaction struct {
 	SeqNum        SequenceNumber
 	TimeBounds    *TimeBounds
 	Memo          Memo
-	Operations    []Operation
+	Operations    []Operation `xdrmaxsize:"100"`
 	Ext           TransactionExt
 }
 
@@ -3031,8 +3207,8 @@ func (u OperationFee) GetFee() (result OperationFeeFee, ok bool) {
 //
 type TransactionEnvelope struct {
 	Tx            Transaction
-	Signatures    []DecoratedSignature
-	OperationFees []OperationFee
+	Signatures    []DecoratedSignature `xdrmaxsize:"20"`
+	OperationFees []OperationFee       `xdrmaxsize:"100"`
 }
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -4589,6 +4765,130 @@ func NewPaymentReversalResult(code PaymentReversalResultCode, value interface{})
 	return
 }
 
+// RefundResultCode is an XDR Enum defines as:
+//
+//   enum RefundResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        REFUND_SUCCESS = 0, // payment successfuly completed
+//
+//        // codes considered as "failure" for the operation
+//        REFUND_UNDERFUNDED = -1,                   // not enough funds in source account
+//        REFUND_SRC_NO_TRUST = -2,                  // no trust line on source account
+//        REFUND_SRC_NOT_AUTHORIZED = -3,            // source not authorized to transfer
+//        REFUND_NO_PAYMENT_SENDER = -4,             // destination account does not exist
+//        REFUND_NO_PAYMENT_SENDER_TRUST = -5,       // destination missing a trust line for asset
+//        REFUND_PAYMENT_SENDER_NOT_AUTHORIZED = -6, // destination not authorized to hold asset
+//        REFUND_PAYMENT_SENDER_LINE_FULL = -7,      // destination would go above their limit
+//        REFUND_NO_ISSUER = -8,                     // missing issuer on asset
+//        REFUND_PAYMENT_DOES_NOT_EXISTS = -11,      // payment with such id does not exists
+//        REFUND_INVALID_AMOUNT = -12,               // amount is not equal to amount in payment
+//        REFUND_INVALID_PAYMENT_SENDER = -14,       // payment sender is not equal to source in payment
+//        REFUND_INVALID_SOURCE = -15,               // source of reversal is not equal payment destination
+//        REFUND_INVALID_ASSET = -16,                // asset is not equal to asset in payment
+//        REFUND_MALFORMED = -17,                    // reversal payment is malformed in some way
+//        REFUND_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
+//        REFUND_ALREADY_REFUNDED = -19              // payment already have been refunded
+//    };
+//
+type RefundResultCode int32
+
+const (
+	RefundResultCodeRefundSuccess                    RefundResultCode = 0
+	RefundResultCodeRefundUnderfunded                RefundResultCode = -1
+	RefundResultCodeRefundSrcNoTrust                 RefundResultCode = -2
+	RefundResultCodeRefundSrcNotAuthorized           RefundResultCode = -3
+	RefundResultCodeRefundNoPaymentSender            RefundResultCode = -4
+	RefundResultCodeRefundNoPaymentSenderTrust       RefundResultCode = -5
+	RefundResultCodeRefundPaymentSenderNotAuthorized RefundResultCode = -6
+	RefundResultCodeRefundPaymentSenderLineFull      RefundResultCode = -7
+	RefundResultCodeRefundNoIssuer                   RefundResultCode = -8
+	RefundResultCodeRefundPaymentDoesNotExists       RefundResultCode = -11
+	RefundResultCodeRefundInvalidAmount              RefundResultCode = -12
+	RefundResultCodeRefundInvalidPaymentSender       RefundResultCode = -14
+	RefundResultCodeRefundInvalidSource              RefundResultCode = -15
+	RefundResultCodeRefundInvalidAsset               RefundResultCode = -16
+	RefundResultCodeRefundMalformed                  RefundResultCode = -17
+	RefundResultCodeRefundNotAllowed                 RefundResultCode = -18
+	RefundResultCodeRefundAlreadyRefunded            RefundResultCode = -19
+)
+
+var refundResultCodeMap = map[int32]string{
+	0:   "RefundResultCodeRefundSuccess",
+	-1:  "RefundResultCodeRefundUnderfunded",
+	-2:  "RefundResultCodeRefundSrcNoTrust",
+	-3:  "RefundResultCodeRefundSrcNotAuthorized",
+	-4:  "RefundResultCodeRefundNoPaymentSender",
+	-5:  "RefundResultCodeRefundNoPaymentSenderTrust",
+	-6:  "RefundResultCodeRefundPaymentSenderNotAuthorized",
+	-7:  "RefundResultCodeRefundPaymentSenderLineFull",
+	-8:  "RefundResultCodeRefundNoIssuer",
+	-11: "RefundResultCodeRefundPaymentDoesNotExists",
+	-12: "RefundResultCodeRefundInvalidAmount",
+	-14: "RefundResultCodeRefundInvalidPaymentSender",
+	-15: "RefundResultCodeRefundInvalidSource",
+	-16: "RefundResultCodeRefundInvalidAsset",
+	-17: "RefundResultCodeRefundMalformed",
+	-18: "RefundResultCodeRefundNotAllowed",
+	-19: "RefundResultCodeRefundAlreadyRefunded",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for RefundResultCode
+func (e RefundResultCode) ValidEnum(v int32) bool {
+	_, ok := refundResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e RefundResultCode) String() string {
+	name, _ := refundResultCodeMap[int32(e)]
+	return name
+}
+
+// RefundResult is an XDR Union defines as:
+//
+//   union RefundResult switch (RefundResultCode code)
+//    {
+//        case REFUND_SUCCESS:
+//            void;
+//        default:
+//            void;
+//    };
+//
+type RefundResult struct {
+	Code RefundResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u RefundResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of RefundResult
+func (u RefundResult) ArmForSwitch(sw int32) (string, bool) {
+	switch RefundResultCode(sw) {
+	case RefundResultCodeRefundSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewRefundResult creates a new  RefundResult.
+func NewRefundResult(code RefundResultCode, value interface{}) (result RefundResult, err error) {
+	result.Code = code
+	switch RefundResultCode(code) {
+	case RefundResultCodeRefundSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -4656,6 +4956,8 @@ func (e OperationResultCode) String() string {
 //    		AdministrativeResult adminResult;
 //    	case PAYMENT_REVERSAL:
 //    		PaymentReversalResult paymentReversalResult;
+//        case REFUND:
+//            RefundResult refundResult;
 //        }
 //
 type OperationResultTr struct {
@@ -4673,6 +4975,7 @@ type OperationResultTr struct {
 	ManageDataResult         *ManageDataResult
 	AdminResult              *AdministrativeResult
 	PaymentReversalResult    *PaymentReversalResult
+	RefundResult             *RefundResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -4711,6 +5014,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "AdminResult", true
 	case OperationTypePaymentReversal:
 		return "PaymentReversalResult", true
+	case OperationTypeRefund:
+		return "RefundResult", true
 	}
 	return "-", false
 }
@@ -4810,6 +5115,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.PaymentReversalResult = &tv
+	case OperationTypeRefund:
+		tv, ok := value.(RefundResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be RefundResult")
+			return
+		}
+		result.RefundResult = &tv
 	}
 	return
 }
@@ -5139,6 +5451,31 @@ func (u OperationResultTr) GetPaymentReversalResult() (result PaymentReversalRes
 	return
 }
 
+// MustRefundResult retrieves the RefundResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustRefundResult() RefundResult {
+	val, ok := u.GetRefundResult()
+
+	if !ok {
+		panic("arm RefundResult is not set")
+	}
+
+	return val
+}
+
+// GetRefundResult retrieves the RefundResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetRefundResult() (result RefundResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RefundResult" {
+		result = *u.RefundResult
+		ok = true
+	}
+
+	return
+}
+
 // OperationResult is an XDR Union defines as:
 //
 //   union OperationResult switch (OperationResultCode code)
@@ -5172,6 +5509,8 @@ func (u OperationResultTr) GetPaymentReversalResult() (result PaymentReversalRes
 //    		AdministrativeResult adminResult;
 //    	case PAYMENT_REVERSAL:
 //    		PaymentReversalResult paymentReversalResult;
+//        case REFUND:
+//            RefundResult refundResult;
 //        }
 //        tr;
 //    default:
@@ -5528,7 +5867,7 @@ func NewStellarValueExt(v int32, value interface{}) (result StellarValueExt, err
 type StellarValue struct {
 	TxSetHash Hash
 	CloseTime Uint64
-	Upgrades  []UpgradeType
+	Upgrades  []UpgradeType `xdrmaxsize:"6"`
 	Ext       StellarValueExt
 }
 
@@ -5821,11 +6160,22 @@ type LedgerKeyData struct {
 //
 //   struct
 //    	{
-//    		int64 ID;
+//    		int64 rID;
 //    	}
 //
 type LedgerKeyReversedPayment struct {
-	Id Int64
+	RId Int64
+}
+
+// LedgerKeyRefundedPayment is an XDR NestedStruct defines as:
+//
+//   struct
+//        {
+//            int64 rID;
+//        }
+//
+type LedgerKeyRefundedPayment struct {
+	RId Int64
 }
 
 // LedgerKey is an XDR Union defines as:
@@ -5861,8 +6211,13 @@ type LedgerKeyReversedPayment struct {
 //    case REVERSED_PAYMENT:
 //    	struct
 //    	{
-//    		int64 ID;
+//    		int64 rID;
 //    	} reversedPayment;
+//    case REFUNDED_PAYMENT:
+//        struct
+//        {
+//            int64 rID;
+//        } refundedPayment;
 //    };
 //
 type LedgerKey struct {
@@ -5872,6 +6227,7 @@ type LedgerKey struct {
 	Offer           *LedgerKeyOffer
 	Data            *LedgerKeyData
 	ReversedPayment *LedgerKeyReversedPayment
+	RefundedPayment *LedgerKeyRefundedPayment
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5894,6 +6250,8 @@ func (u LedgerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "Data", true
 	case LedgerEntryTypeReversedPayment:
 		return "ReversedPayment", true
+	case LedgerEntryTypeRefundedPayment:
+		return "RefundedPayment", true
 	}
 	return "-", false
 }
@@ -5937,6 +6295,13 @@ func NewLedgerKey(aType LedgerEntryType, value interface{}) (result LedgerKey, e
 			return
 		}
 		result.ReversedPayment = &tv
+	case LedgerEntryTypeRefundedPayment:
+		tv, ok := value.(LedgerKeyRefundedPayment)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerKeyRefundedPayment")
+			return
+		}
+		result.RefundedPayment = &tv
 	}
 	return
 }
@@ -6060,6 +6425,31 @@ func (u LedgerKey) GetReversedPayment() (result LedgerKeyReversedPayment, ok boo
 
 	if armName == "ReversedPayment" {
 		result = *u.ReversedPayment
+		ok = true
+	}
+
+	return
+}
+
+// MustRefundedPayment retrieves the RefundedPayment value from the union,
+// panicing if the value is not set.
+func (u LedgerKey) MustRefundedPayment() LedgerKeyRefundedPayment {
+	val, ok := u.GetRefundedPayment()
+
+	if !ok {
+		panic("arm RefundedPayment is not set")
+	}
+
+	return val
+}
+
+// GetRefundedPayment retrieves the RefundedPayment value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerKey) GetRefundedPayment() (result LedgerKeyRefundedPayment, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RefundedPayment" {
+		result = *u.RefundedPayment
 		ok = true
 	}
 
@@ -6222,7 +6612,7 @@ const MaxTxPerLedger = 5000
 //
 type TransactionSet struct {
 	PreviousLedgerHash Hash
-	Txs                []TransactionEnvelope
+	Txs                []TransactionEnvelope `xdrmaxsize:"5000"`
 }
 
 // TransactionResultPair is an XDR Struct defines as:
@@ -6246,7 +6636,7 @@ type TransactionResultPair struct {
 //    };
 //
 type TransactionResultSet struct {
-	Results []TransactionResultPair
+	Results []TransactionResultPair `xdrmaxsize:"5000"`
 }
 
 // TransactionHistoryEntryExt is an XDR NestedUnion defines as:
@@ -6881,7 +7271,7 @@ func (e ErrorCode) String() string {
 //
 type Error struct {
 	Code ErrorCode
-	Msg  string
+	Msg  string `xdrmaxsize:"100"`
 }
 
 // AuthCert is an XDR Struct defines as:
@@ -6919,7 +7309,7 @@ type Hello struct {
 	OverlayVersion    Uint32
 	OverlayMinVersion Uint32
 	NetworkId         Hash
-	VersionStr        string
+	VersionStr        string `xdrmaxsize:"100"`
 	ListeningPort     int32
 	PeerId            NodeId
 	Cert              AuthCert

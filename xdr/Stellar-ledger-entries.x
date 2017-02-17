@@ -26,7 +26,7 @@ enum AccountType
     ACCOUNT_BANK = 6,
     ACCOUNT_SCRATCH_CARD = 7,
     ACCOUNT_GENERAL_AGENT = 8,
-    ACCOUNT_COMMISSION = 9    
+    ACCOUNT_COMMISSION = 9
 };
 
 enum SignerType
@@ -88,7 +88,8 @@ enum LedgerEntryType
     TRUSTLINE = 1,
     OFFER = 2,
     DATA = 3,
-	REVERSED_PAYMENT = 4
+	REVERSED_PAYMENT = 4,
+    REFUNDED_PAYMENT = 5
 };
 
 struct Signer
@@ -241,8 +242,26 @@ struct DataEntry
 */
 struct ReversedPaymentEntry
 {
-    int64 ID;       // id of reversed payment
+    int64 rID;       // id of reversed payment
 
+    // reserved for future use
+    union switch (int v)
+    {
+    case 0:
+        void;
+    }
+    ext;
+};
+
+/* RefundEntry
+    Refund data.
+*/
+struct RefundEntry
+{
+    int64 rID;                  // id of refund
+    Asset asset;                // type of asset (with issuer)
+    int64 refundedAmount;       // already refunded amount
+    int64 totalOriginalAmount;  // the amount of the original operation
     // reserved for future use
     union switch (int v)
     {
@@ -269,6 +288,8 @@ struct LedgerEntry
         DataEntry data;
 	case REVERSED_PAYMENT:
 		ReversedPaymentEntry reversedPayment;
+    case REFUNDED_PAYMENT:
+        RefundEntry refundedPayment;
     }
     data;
 
