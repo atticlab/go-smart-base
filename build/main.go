@@ -122,6 +122,10 @@ type PaymentID struct {
 	ID int64
 }
 
+type OriginalAmount struct {
+	Amount string
+}
+
 type PaymentSender struct {
 	AddressOrSeed string
 }

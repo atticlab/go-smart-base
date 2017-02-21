@@ -305,6 +305,18 @@ func (m PaymentReversalBuilder) MutateTransaction(o *TransactionBuilder) error {
 	return m.Err
 }
 
+// MutateTransaction for RefundBuilder causes the underylying RefundOp
+// to be added to the operation list for the provided transaction
+func (m RefundBuilder) MutateTransaction(o *TransactionBuilder) error {
+	if m.Err != nil {
+		return m.Err
+	}
+
+	m.O.Body, m.Err = xdr.NewOperationBody(xdr.OperationTypeRefund, m.R)
+	o.TX.Operations = append(o.TX.Operations, m.O)
+	return m.Err
+}
+
 // MutateTransaction for SetOptionsBuilder causes the underylying
 // SetOptionsOp to be added to the operation list for the provided
 // transaction
