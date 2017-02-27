@@ -680,7 +680,8 @@ func (e ThresholdIndexes) String() string {
 //        OFFER = 2,
 //        DATA = 3,
 //    	REVERSED_PAYMENT = 4,
-//        REFUNDED_PAYMENT = 5
+//        REFUNDED_PAYMENT = 5,
+//    	ASSET = 6
 //    };
 //
 type LedgerEntryType int32
@@ -692,6 +693,7 @@ const (
 	LedgerEntryTypeData            LedgerEntryType = 3
 	LedgerEntryTypeReversedPayment LedgerEntryType = 4
 	LedgerEntryTypeRefundedPayment LedgerEntryType = 5
+	LedgerEntryTypeAsset           LedgerEntryType = 6
 )
 
 var ledgerEntryTypeMap = map[int32]string{
@@ -701,6 +703,7 @@ var ledgerEntryTypeMap = map[int32]string{
 	3: "LedgerEntryTypeData",
 	4: "LedgerEntryTypeReversedPayment",
 	5: "LedgerEntryTypeRefundedPayment",
+	6: "LedgerEntryTypeAsset",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1245,6 +1248,66 @@ type RefundEntry struct {
 	Ext                 RefundEntryExt
 }
 
+// AssetEntryExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type AssetEntryExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u AssetEntryExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of AssetEntryExt
+func (u AssetEntryExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewAssetEntryExt creates a new  AssetEntryExt.
+func NewAssetEntryExt(v int32, value interface{}) (result AssetEntryExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// AssetEntry is an XDR Struct defines as:
+//
+//   struct AssetEntry
+//    {
+//        Asset asset; // A
+//        bool isAnonymous;
+//
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type AssetEntry struct {
+	Asset       Asset
+	IsAnonymous bool
+	Ext         AssetEntryExt
+}
+
 // LedgerEntryData is an XDR NestedUnion defines as:
 //
 //   union switch (LedgerEntryType type)
@@ -1261,6 +1324,8 @@ type RefundEntry struct {
 //    		ReversedPaymentEntry reversedPayment;
 //        case REFUNDED_PAYMENT:
 //            RefundEntry refundedPayment;
+//    	case ASSET:
+//    		AssetEntry asset;
 //        }
 //
 type LedgerEntryData struct {
@@ -1271,6 +1336,7 @@ type LedgerEntryData struct {
 	Data            *DataEntry
 	ReversedPayment *ReversedPaymentEntry
 	RefundedPayment *RefundEntry
+	Asset           *AssetEntry
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1295,6 +1361,8 @@ func (u LedgerEntryData) ArmForSwitch(sw int32) (string, bool) {
 		return "ReversedPayment", true
 	case LedgerEntryTypeRefundedPayment:
 		return "RefundedPayment", true
+	case LedgerEntryTypeAsset:
+		return "Asset", true
 	}
 	return "-", false
 }
@@ -1345,6 +1413,13 @@ func NewLedgerEntryData(aType LedgerEntryType, value interface{}) (result Ledger
 			return
 		}
 		result.RefundedPayment = &tv
+	case LedgerEntryTypeAsset:
+		tv, ok := value.(AssetEntry)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AssetEntry")
+			return
+		}
+		result.Asset = &tv
 	}
 	return
 }
@@ -1499,6 +1574,31 @@ func (u LedgerEntryData) GetRefundedPayment() (result RefundEntry, ok bool) {
 	return
 }
 
+// MustAsset retrieves the Asset value from the union,
+// panicing if the value is not set.
+func (u LedgerEntryData) MustAsset() AssetEntry {
+	val, ok := u.GetAsset()
+
+	if !ok {
+		panic("arm Asset is not set")
+	}
+
+	return val
+}
+
+// GetAsset retrieves the Asset value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerEntryData) GetAsset() (result AssetEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Asset" {
+		result = *u.Asset
+		ok = true
+	}
+
+	return
+}
+
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -1557,6 +1657,8 @@ func NewLedgerEntryExt(v int32, value interface{}) (result LedgerEntryExt, err e
 //    		ReversedPaymentEntry reversedPayment;
 //        case REFUNDED_PAYMENT:
 //            RefundEntry refundedPayment;
+//    	case ASSET:
+//    		AssetEntry asset;
 //        }
 //        data;
 //
@@ -1641,7 +1743,8 @@ type DecoratedSignature struct {
 //        MANAGE_DATA = 10,
 //    	ADMINISTRATIVE = 11,
 //    	PAYMENT_REVERSAL = 12,
-//        REFUND = 13
+//        REFUND = 13,
+//    	MANAGE_ASSET = 14
 //    };
 //
 type OperationType int32
@@ -1661,6 +1764,7 @@ const (
 	OperationTypeAdministrative     OperationType = 11
 	OperationTypePaymentReversal    OperationType = 12
 	OperationTypeRefund             OperationType = 13
+	OperationTypeManageAsset        OperationType = 14
 )
 
 var operationTypeMap = map[int32]string{
@@ -1678,6 +1782,7 @@ var operationTypeMap = map[int32]string{
 	11: "OperationTypeAdministrative",
 	12: "OperationTypePaymentReversal",
 	13: "OperationTypeRefund",
+	14: "OperationTypeManageAsset",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -2127,6 +2232,22 @@ type RefundOp struct {
 	PaymentId      Int64
 }
 
+// ManageAssetOp is an XDR Struct defines as:
+//
+//   struct ManageAssetOp
+//    {
+//        Asset asset;           // asset to be managed
+//    	bool isAnonymous;
+//    	bool isDelete;
+//
+//    };
+//
+type ManageAssetOp struct {
+	Asset       Asset
+	IsAnonymous bool
+	IsDelete    bool
+}
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -2159,6 +2280,8 @@ type RefundOp struct {
 //    		PaymentReversalOp paymentReversalOp;
 //        case REFUND:
 //            RefundOp refundOp;
+//    	case MANAGE_ASSET:
+//    		ManageAssetOp manageAssetOp;
 //        }
 //
 type OperationBody struct {
@@ -2176,6 +2299,7 @@ type OperationBody struct {
 	AdminOp              *AdministrativeOp
 	PaymentReversalOp    *PaymentReversalOp
 	RefundOp             *RefundOp
+	ManageAssetOp        *ManageAssetOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2216,6 +2340,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "PaymentReversalOp", true
 	case OperationTypeRefund:
 		return "RefundOp", true
+	case OperationTypeManageAsset:
+		return "ManageAssetOp", true
 	}
 	return "-", false
 }
@@ -2317,6 +2443,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.RefundOp = &tv
+	case OperationTypeManageAsset:
+		tv, ok := value.(ManageAssetOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ManageAssetOp")
+			return
+		}
+		result.ManageAssetOp = &tv
 	}
 	return
 }
@@ -2646,6 +2779,31 @@ func (u OperationBody) GetRefundOp() (result RefundOp, ok bool) {
 	return
 }
 
+// MustManageAssetOp retrieves the ManageAssetOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustManageAssetOp() ManageAssetOp {
+	val, ok := u.GetManageAssetOp()
+
+	if !ok {
+		panic("arm ManageAssetOp is not set")
+	}
+
+	return val
+}
+
+// GetManageAssetOp retrieves the ManageAssetOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetManageAssetOp() (result ManageAssetOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ManageAssetOp" {
+		result = *u.ManageAssetOp
+		ok = true
+	}
+
+	return
+}
+
 // Operation is an XDR Struct defines as:
 //
 //   struct Operation
@@ -2685,6 +2843,8 @@ func (u OperationBody) GetRefundOp() (result RefundOp, ok bool) {
 //    		PaymentReversalOp paymentReversalOp;
 //        case REFUND:
 //            RefundOp refundOp;
+//    	case MANAGE_ASSET:
+//    		ManageAssetOp manageAssetOp;
 //        }
 //        body;
 //    };
@@ -3253,7 +3413,8 @@ type ClaimOfferAtom struct {
 //        CREATE_ACCOUNT_NOT_AUTHORIZED_TYPE = -5,
 //        CREATE_ACCOUNT_WRONG_TYPE = -6,
 //        CREATE_ACCOUNT_LINE_FULL = -7,
-//        CREATE_ACCOUNT_NO_ISSUER = -8
+//        CREATE_ACCOUNT_NO_ISSUER = -8,
+//    	CREATE_ACCOUNT_ASSET_NOT_ALLOWED = -9
 //    };
 //
 type CreateAccountResultCode int32
@@ -3268,6 +3429,7 @@ const (
 	CreateAccountResultCodeCreateAccountWrongType         CreateAccountResultCode = -6
 	CreateAccountResultCodeCreateAccountLineFull          CreateAccountResultCode = -7
 	CreateAccountResultCodeCreateAccountNoIssuer          CreateAccountResultCode = -8
+	CreateAccountResultCodeCreateAccountAssetNotAllowed   CreateAccountResultCode = -9
 )
 
 var createAccountResultCodeMap = map[int32]string{
@@ -3280,6 +3442,7 @@ var createAccountResultCodeMap = map[int32]string{
 	-6: "CreateAccountResultCodeCreateAccountWrongType",
 	-7: "CreateAccountResultCodeCreateAccountLineFull",
 	-8: "CreateAccountResultCodeCreateAccountNoIssuer",
+	-9: "CreateAccountResultCodeCreateAccountAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3354,7 +3517,8 @@ func NewCreateAccountResult(code CreateAccountResultCode, value interface{}) (re
 //        PAYMENT_NO_TRUST = -6,       // destination missing a trust line for asset
 //        PAYMENT_NOT_AUTHORIZED = -7, // destination not authorized to hold asset
 //        PAYMENT_LINE_FULL = -8,      // destination would go above their limit
-//        PAYMENT_NO_ISSUER = -9       // missing issuer on asset
+//        PAYMENT_NO_ISSUER = -9,       // missing issuer on asset
+//    	PAYMENT_ASSET_NOT_ALLOWED = -10  // asset is not allowed
 //    };
 //
 type PaymentResultCode int32
@@ -3370,19 +3534,21 @@ const (
 	PaymentResultCodePaymentNotAuthorized    PaymentResultCode = -7
 	PaymentResultCodePaymentLineFull         PaymentResultCode = -8
 	PaymentResultCodePaymentNoIssuer         PaymentResultCode = -9
+	PaymentResultCodePaymentAssetNotAllowed  PaymentResultCode = -10
 )
 
 var paymentResultCodeMap = map[int32]string{
-	0:  "PaymentResultCodePaymentSuccess",
-	-1: "PaymentResultCodePaymentMalformed",
-	-2: "PaymentResultCodePaymentUnderfunded",
-	-3: "PaymentResultCodePaymentSrcNoTrust",
-	-4: "PaymentResultCodePaymentSrcNotAuthorized",
-	-5: "PaymentResultCodePaymentNoDestination",
-	-6: "PaymentResultCodePaymentNoTrust",
-	-7: "PaymentResultCodePaymentNotAuthorized",
-	-8: "PaymentResultCodePaymentLineFull",
-	-9: "PaymentResultCodePaymentNoIssuer",
+	0:   "PaymentResultCodePaymentSuccess",
+	-1:  "PaymentResultCodePaymentMalformed",
+	-2:  "PaymentResultCodePaymentUnderfunded",
+	-3:  "PaymentResultCodePaymentSrcNoTrust",
+	-4:  "PaymentResultCodePaymentSrcNotAuthorized",
+	-5:  "PaymentResultCodePaymentNoDestination",
+	-6:  "PaymentResultCodePaymentNoTrust",
+	-7:  "PaymentResultCodePaymentNotAuthorized",
+	-8:  "PaymentResultCodePaymentLineFull",
+	-9:  "PaymentResultCodePaymentNoIssuer",
+	-10: "PaymentResultCodePaymentAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3460,7 +3626,8 @@ func NewPaymentResult(code PaymentResultCode, value interface{}) (result Payment
 //        PATH_PAYMENT_NO_ISSUER = -9,          // missing issuer on one asset
 //        PATH_PAYMENT_TOO_FEW_OFFERS = -10,    // not enough offers to satisfy path
 //        PATH_PAYMENT_OFFER_CROSS_SELF = -11,  // would cross one of its own offers
-//        PATH_PAYMENT_OVER_SENDMAX = -12       // could not satisfy sendmax
+//        PATH_PAYMENT_OVER_SENDMAX = -12,      // could not satisfy sendmax
+//    	PATH_PAYMENT_ASSET_NOT_ALLOWED = -13  // asset is not allowed
 //    };
 //
 type PathPaymentResultCode int32
@@ -3479,6 +3646,7 @@ const (
 	PathPaymentResultCodePathPaymentTooFewOffers     PathPaymentResultCode = -10
 	PathPaymentResultCodePathPaymentOfferCrossSelf   PathPaymentResultCode = -11
 	PathPaymentResultCodePathPaymentOverSendmax      PathPaymentResultCode = -12
+	PathPaymentResultCodePathPaymentAssetNotAllowed  PathPaymentResultCode = -13
 )
 
 var pathPaymentResultCodeMap = map[int32]string{
@@ -3495,6 +3663,7 @@ var pathPaymentResultCodeMap = map[int32]string{
 	-10: "PathPaymentResultCodePathPaymentTooFewOffers",
 	-11: "PathPaymentResultCodePathPaymentOfferCrossSelf",
 	-12: "PathPaymentResultCodePathPaymentOverSendmax",
+	-13: "PathPaymentResultCodePathPaymentAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4054,21 +4223,23 @@ func NewSetOptionsResult(code SetOptionsResultCode, value interface{}) (result S
 //        // codes considered as "success" for the operation
 //        CHANGE_TRUST_SUCCESS = 0,
 //        // codes considered as "failure" for the operation
-//        CHANGE_TRUST_MALFORMED = -1,     // bad input
-//        CHANGE_TRUST_NO_ISSUER = -2,     // could not find issuer
-//        CHANGE_TRUST_INVALID_LIMIT = -3, // cannot drop limit below balance
-//                                         // cannot create with a limit of 0
-//        CHANGE_TRUST_LOW_RESERVE = -4 // not enough funds to create a new trust line
+//        CHANGE_TRUST_MALFORMED = -1,        // bad input
+//        CHANGE_TRUST_NO_ISSUER = -2,        // could not find issuer
+//        CHANGE_TRUST_INVALID_LIMIT = -3,    // cannot drop limit below balance
+//                                            // cannot create with a limit of 0
+//        CHANGE_TRUST_LOW_RESERVE = -4,      // not enough funds to create a new trust line
+//    	CHANGE_TRUST_ASSET_NOT_ALLOWED = -5 // asset is not allowed
 //    };
 //
 type ChangeTrustResultCode int32
 
 const (
-	ChangeTrustResultCodeChangeTrustSuccess      ChangeTrustResultCode = 0
-	ChangeTrustResultCodeChangeTrustMalformed    ChangeTrustResultCode = -1
-	ChangeTrustResultCodeChangeTrustNoIssuer     ChangeTrustResultCode = -2
-	ChangeTrustResultCodeChangeTrustInvalidLimit ChangeTrustResultCode = -3
-	ChangeTrustResultCodeChangeTrustLowReserve   ChangeTrustResultCode = -4
+	ChangeTrustResultCodeChangeTrustSuccess         ChangeTrustResultCode = 0
+	ChangeTrustResultCodeChangeTrustMalformed       ChangeTrustResultCode = -1
+	ChangeTrustResultCodeChangeTrustNoIssuer        ChangeTrustResultCode = -2
+	ChangeTrustResultCodeChangeTrustInvalidLimit    ChangeTrustResultCode = -3
+	ChangeTrustResultCodeChangeTrustLowReserve      ChangeTrustResultCode = -4
+	ChangeTrustResultCodeChangeTrustAssetNotAllowed ChangeTrustResultCode = -5
 )
 
 var changeTrustResultCodeMap = map[int32]string{
@@ -4077,6 +4248,7 @@ var changeTrustResultCodeMap = map[int32]string{
 	-2: "ChangeTrustResultCodeChangeTrustNoIssuer",
 	-3: "ChangeTrustResultCodeChangeTrustInvalidLimit",
 	-4: "ChangeTrustResultCodeChangeTrustLowReserve",
+	-5: "ChangeTrustResultCodeChangeTrustAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4658,7 +4830,8 @@ func NewAdministrativeResult(code AdministrativeResultCode, value interface{}) (
 //    	PAYMENT_REVERSAL_INVALID_ASSET = -16,                // asset is not equal to asset in payment
 //    	PAYMENT_REVERSAL_MALFORMED = -17,                    // reversal payment is malformed in some way
 //    	PAYMENT_REVERSAL_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
-//    	PAYMENT_REVERSAL_ALREADY_REVERSED = -19              // payment already have been reversed
+//    	PAYMENT_REVERSAL_ALREADY_REVERSED = -19,             // payment already have been reversed
+//    	PAYMENT_REVERSAL_ASSET_NOT_ALLOWED = -20             // asset is not allowed
 //    };
 //
 type PaymentReversalResultCode int32
@@ -4684,6 +4857,7 @@ const (
 	PaymentReversalResultCodePaymentReversalMalformed                  PaymentReversalResultCode = -17
 	PaymentReversalResultCodePaymentReversalNotAllowed                 PaymentReversalResultCode = -18
 	PaymentReversalResultCodePaymentReversalAlreadyReversed            PaymentReversalResultCode = -19
+	PaymentReversalResultCodePaymentReversalAssetNotAllowed            PaymentReversalResultCode = -20
 )
 
 var paymentReversalResultCodeMap = map[int32]string{
@@ -4707,6 +4881,7 @@ var paymentReversalResultCodeMap = map[int32]string{
 	-17: "PaymentReversalResultCodePaymentReversalMalformed",
 	-18: "PaymentReversalResultCodePaymentReversalNotAllowed",
 	-19: "PaymentReversalResultCodePaymentReversalAlreadyReversed",
+	-20: "PaymentReversalResultCodePaymentReversalAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4788,7 +4963,8 @@ func NewPaymentReversalResult(code PaymentReversalResultCode, value interface{})
 //        REFUND_INVALID_ASSET = -16,                // asset is not equal to asset in payment
 //        REFUND_MALFORMED = -17,                    // reversal payment is malformed in some way
 //        REFUND_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
-//        REFUND_ALREADY_REFUNDED = -19              // payment already have been refunded
+//        REFUND_ALREADY_REFUNDED = -19,             // payment already have been refunded
+//    	REFUND_ASSET_NOT_ALLOWED = -20                   // asset is not allowed
 //    };
 //
 type RefundResultCode int32
@@ -4811,6 +4987,7 @@ const (
 	RefundResultCodeRefundMalformed                  RefundResultCode = -17
 	RefundResultCodeRefundNotAllowed                 RefundResultCode = -18
 	RefundResultCodeRefundAlreadyRefunded            RefundResultCode = -19
+	RefundResultCodeRefundAssetNotAllowed            RefundResultCode = -20
 )
 
 var refundResultCodeMap = map[int32]string{
@@ -4831,6 +5008,7 @@ var refundResultCodeMap = map[int32]string{
 	-17: "RefundResultCodeRefundMalformed",
 	-18: "RefundResultCodeRefundNotAllowed",
 	-19: "RefundResultCodeRefundAlreadyRefunded",
+	-20: "RefundResultCodeRefundAssetNotAllowed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4882,6 +5060,94 @@ func NewRefundResult(code RefundResultCode, value interface{}) (result RefundRes
 	result.Code = code
 	switch RefundResultCode(code) {
 	case RefundResultCodeRefundSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
+// ManageAssetResultCode is an XDR Enum defines as:
+//
+//   enum ManageAssetResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        MANAGE_ASSET_SUCCESS = 0, // op was applied
+//
+//        // codes considered as "failure" for the operation
+//        MANAGE_ASSET_NOT_EXIST = -1,      // asset does not exists
+//        MANAGE_ASSET_INVALID_ISSUER = -2, // issuer must be bank
+//    	MANAGE_ASSET_NOT_AUTHORIZED = -3, // must be signed by admin
+//    	MANAGE_ASSET_LOW_RESERVE = -4     // low reserve
+//    };
+//
+type ManageAssetResultCode int32
+
+const (
+	ManageAssetResultCodeManageAssetSuccess       ManageAssetResultCode = 0
+	ManageAssetResultCodeManageAssetNotExist      ManageAssetResultCode = -1
+	ManageAssetResultCodeManageAssetInvalidIssuer ManageAssetResultCode = -2
+	ManageAssetResultCodeManageAssetNotAuthorized ManageAssetResultCode = -3
+	ManageAssetResultCodeManageAssetLowReserve    ManageAssetResultCode = -4
+)
+
+var manageAssetResultCodeMap = map[int32]string{
+	0:  "ManageAssetResultCodeManageAssetSuccess",
+	-1: "ManageAssetResultCodeManageAssetNotExist",
+	-2: "ManageAssetResultCodeManageAssetInvalidIssuer",
+	-3: "ManageAssetResultCodeManageAssetNotAuthorized",
+	-4: "ManageAssetResultCodeManageAssetLowReserve",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ManageAssetResultCode
+func (e ManageAssetResultCode) ValidEnum(v int32) bool {
+	_, ok := manageAssetResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ManageAssetResultCode) String() string {
+	name, _ := manageAssetResultCodeMap[int32(e)]
+	return name
+}
+
+// ManageAssetResult is an XDR Union defines as:
+//
+//   union ManageAssetResult switch (ManageAssetResultCode code)
+//    {
+//    case MANAGE_ASSET_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type ManageAssetResult struct {
+	Code ManageAssetResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ManageAssetResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ManageAssetResult
+func (u ManageAssetResult) ArmForSwitch(sw int32) (string, bool) {
+	switch ManageAssetResultCode(sw) {
+	case ManageAssetResultCodeManageAssetSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewManageAssetResult creates a new  ManageAssetResult.
+func NewManageAssetResult(code ManageAssetResultCode, value interface{}) (result ManageAssetResult, err error) {
+	result.Code = code
+	switch ManageAssetResultCode(code) {
+	case ManageAssetResultCodeManageAssetSuccess:
 		// void
 	default:
 		// void
@@ -4958,6 +5224,8 @@ func (e OperationResultCode) String() string {
 //    		PaymentReversalResult paymentReversalResult;
 //        case REFUND:
 //            RefundResult refundResult;
+//    	case MANAGE_ASSET:
+//    		ManageAssetResult manageAssetResult;
 //        }
 //
 type OperationResultTr struct {
@@ -4976,6 +5244,7 @@ type OperationResultTr struct {
 	AdminResult              *AdministrativeResult
 	PaymentReversalResult    *PaymentReversalResult
 	RefundResult             *RefundResult
+	ManageAssetResult        *ManageAssetResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5016,6 +5285,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "PaymentReversalResult", true
 	case OperationTypeRefund:
 		return "RefundResult", true
+	case OperationTypeManageAsset:
+		return "ManageAssetResult", true
 	}
 	return "-", false
 }
@@ -5122,6 +5393,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.RefundResult = &tv
+	case OperationTypeManageAsset:
+		tv, ok := value.(ManageAssetResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ManageAssetResult")
+			return
+		}
+		result.ManageAssetResult = &tv
 	}
 	return
 }
@@ -5476,6 +5754,31 @@ func (u OperationResultTr) GetRefundResult() (result RefundResult, ok bool) {
 	return
 }
 
+// MustManageAssetResult retrieves the ManageAssetResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustManageAssetResult() ManageAssetResult {
+	val, ok := u.GetManageAssetResult()
+
+	if !ok {
+		panic("arm ManageAssetResult is not set")
+	}
+
+	return val
+}
+
+// GetManageAssetResult retrieves the ManageAssetResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetManageAssetResult() (result ManageAssetResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ManageAssetResult" {
+		result = *u.ManageAssetResult
+		ok = true
+	}
+
+	return
+}
+
 // OperationResult is an XDR Union defines as:
 //
 //   union OperationResult switch (OperationResultCode code)
@@ -5511,6 +5814,8 @@ func (u OperationResultTr) GetRefundResult() (result RefundResult, ok bool) {
 //    		PaymentReversalResult paymentReversalResult;
 //        case REFUND:
 //            RefundResult refundResult;
+//    	case MANAGE_ASSET:
+//    		ManageAssetResult manageAssetResult;
 //        }
 //        tr;
 //    default:
@@ -6178,6 +6483,17 @@ type LedgerKeyRefundedPayment struct {
 	RId Int64
 }
 
+// LedgerKeyAsset is an XDR NestedStruct defines as:
+//
+//   struct
+//    	{
+//    		Asset asset;
+//    	}
+//
+type LedgerKeyAsset struct {
+	Asset Asset
+}
+
 // LedgerKey is an XDR Union defines as:
 //
 //   union LedgerKey switch (LedgerEntryType type)
@@ -6218,6 +6534,11 @@ type LedgerKeyRefundedPayment struct {
 //        {
 //            int64 rID;
 //        } refundedPayment;
+//    case ASSET:
+//    	struct
+//    	{
+//    		Asset asset;
+//    	} asset;
 //    };
 //
 type LedgerKey struct {
@@ -6228,6 +6549,7 @@ type LedgerKey struct {
 	Data            *LedgerKeyData
 	ReversedPayment *LedgerKeyReversedPayment
 	RefundedPayment *LedgerKeyRefundedPayment
+	Asset           *LedgerKeyAsset
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -6252,6 +6574,8 @@ func (u LedgerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "ReversedPayment", true
 	case LedgerEntryTypeRefundedPayment:
 		return "RefundedPayment", true
+	case LedgerEntryTypeAsset:
+		return "Asset", true
 	}
 	return "-", false
 }
@@ -6302,6 +6626,13 @@ func NewLedgerKey(aType LedgerEntryType, value interface{}) (result LedgerKey, e
 			return
 		}
 		result.RefundedPayment = &tv
+	case LedgerEntryTypeAsset:
+		tv, ok := value.(LedgerKeyAsset)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerKeyAsset")
+			return
+		}
+		result.Asset = &tv
 	}
 	return
 }
@@ -6450,6 +6781,31 @@ func (u LedgerKey) GetRefundedPayment() (result LedgerKeyRefundedPayment, ok boo
 
 	if armName == "RefundedPayment" {
 		result = *u.RefundedPayment
+		ok = true
+	}
+
+	return
+}
+
+// MustAsset retrieves the Asset value from the union,
+// panicing if the value is not set.
+func (u LedgerKey) MustAsset() LedgerKeyAsset {
+	val, ok := u.GetAsset()
+
+	if !ok {
+		panic("arm Asset is not set")
+	}
+
+	return val
+}
+
+// GetAsset retrieves the Asset value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerKey) GetAsset() (result LedgerKeyAsset, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Asset" {
+		result = *u.Asset
 		ok = true
 	}
 
