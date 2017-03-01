@@ -681,7 +681,8 @@ func (e ThresholdIndexes) String() string {
 //        DATA = 3,
 //    	REVERSED_PAYMENT = 4,
 //        REFUNDED_PAYMENT = 5,
-//    	ASSET = 6
+//    	ASSET = 6,
+//    	STATISTICS = 7
 //    };
 //
 type LedgerEntryType int32
@@ -694,6 +695,7 @@ const (
 	LedgerEntryTypeReversedPayment LedgerEntryType = 4
 	LedgerEntryTypeRefundedPayment LedgerEntryType = 5
 	LedgerEntryTypeAsset           LedgerEntryType = 6
+	LedgerEntryTypeStatistics      LedgerEntryType = 7
 )
 
 var ledgerEntryTypeMap = map[int32]string{
@@ -704,6 +706,7 @@ var ledgerEntryTypeMap = map[int32]string{
 	4: "LedgerEntryTypeReversedPayment",
 	5: "LedgerEntryTypeRefundedPayment",
 	6: "LedgerEntryTypeAsset",
+	7: "LedgerEntryTypeStatistics",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1290,8 +1293,17 @@ func NewAssetEntryExt(v int32, value interface{}) (result AssetEntryExt, err err
 //
 //   struct AssetEntry
 //    {
-//        Asset asset; // A
+//        Asset asset;
 //        bool isAnonymous;
+//
+//    	//restrictions
+//    	int64 maxBalance;
+//    	int64 maxDailyIn;
+//    	int64 maxDailyOut;
+//    	int64 maxMonthlyIn;
+//    	int64 maxMonthlyOut;
+//    	int64 maxAnnualIn;
+//    	int64 maxAnnualOut;
 //
 //        // reserved for future use
 //        union switch (int v)
@@ -1303,9 +1315,94 @@ func NewAssetEntryExt(v int32, value interface{}) (result AssetEntryExt, err err
 //    };
 //
 type AssetEntry struct {
-	Asset       Asset
-	IsAnonymous bool
-	Ext         AssetEntryExt
+	Asset         Asset
+	IsAnonymous   bool
+	MaxBalance    Int64
+	MaxDailyIn    Int64
+	MaxDailyOut   Int64
+	MaxMonthlyIn  Int64
+	MaxMonthlyOut Int64
+	MaxAnnualIn   Int64
+	MaxAnnualOut  Int64
+	Ext           AssetEntryExt
+}
+
+// StatisticsEntryExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type StatisticsEntryExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u StatisticsEntryExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of StatisticsEntryExt
+func (u StatisticsEntryExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewStatisticsEntryExt creates a new  StatisticsEntryExt.
+func NewStatisticsEntryExt(v int32, value interface{}) (result StatisticsEntryExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// StatisticsEntry is an XDR Struct defines as:
+//
+//   struct StatisticsEntry
+//    {
+//    	AccountID accountID;
+//        Asset asset;
+//        AccountType counterpartyType;
+//
+//    	int64 dailyIncome;
+//    	int64 dailyOutcome;
+//    	int64 monthlyIncome;
+//    	int64 monthlyOutcome;
+//    	int64 annualIncome;
+//    	int64 annualOutcome;
+//
+//    	int64 updatedAt;
+//
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type StatisticsEntry struct {
+	AccountId        AccountId
+	Asset            Asset
+	CounterpartyType AccountType
+	DailyIncome      Int64
+	DailyOutcome     Int64
+	MonthlyIncome    Int64
+	MonthlyOutcome   Int64
+	AnnualIncome     Int64
+	AnnualOutcome    Int64
+	UpdatedAt        Int64
+	Ext              StatisticsEntryExt
 }
 
 // LedgerEntryData is an XDR NestedUnion defines as:
@@ -1326,6 +1423,8 @@ type AssetEntry struct {
 //            RefundEntry refundedPayment;
 //    	case ASSET:
 //    		AssetEntry asset;
+//    	case STATISTICS:
+//    		StatisticsEntry stats;
 //        }
 //
 type LedgerEntryData struct {
@@ -1337,6 +1436,7 @@ type LedgerEntryData struct {
 	ReversedPayment *ReversedPaymentEntry
 	RefundedPayment *RefundEntry
 	Asset           *AssetEntry
+	Stats           *StatisticsEntry
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1363,6 +1463,8 @@ func (u LedgerEntryData) ArmForSwitch(sw int32) (string, bool) {
 		return "RefundedPayment", true
 	case LedgerEntryTypeAsset:
 		return "Asset", true
+	case LedgerEntryTypeStatistics:
+		return "Stats", true
 	}
 	return "-", false
 }
@@ -1420,6 +1522,13 @@ func NewLedgerEntryData(aType LedgerEntryType, value interface{}) (result Ledger
 			return
 		}
 		result.Asset = &tv
+	case LedgerEntryTypeStatistics:
+		tv, ok := value.(StatisticsEntry)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be StatisticsEntry")
+			return
+		}
+		result.Stats = &tv
 	}
 	return
 }
@@ -1599,6 +1708,31 @@ func (u LedgerEntryData) GetAsset() (result AssetEntry, ok bool) {
 	return
 }
 
+// MustStats retrieves the Stats value from the union,
+// panicing if the value is not set.
+func (u LedgerEntryData) MustStats() StatisticsEntry {
+	val, ok := u.GetStats()
+
+	if !ok {
+		panic("arm Stats is not set")
+	}
+
+	return val
+}
+
+// GetStats retrieves the Stats value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerEntryData) GetStats() (result StatisticsEntry, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Stats" {
+		result = *u.Stats
+		ok = true
+	}
+
+	return
+}
+
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -1659,6 +1793,8 @@ func NewLedgerEntryExt(v int32, value interface{}) (result LedgerEntryExt, err e
 //            RefundEntry refundedPayment;
 //    	case ASSET:
 //    		AssetEntry asset;
+//    	case STATISTICS:
+//    		StatisticsEntry stats;
 //        }
 //        data;
 //
@@ -2203,6 +2339,7 @@ type AdministrativeOp struct {
 //        int64 amount;            // amount they end up with
 //    	int64 commissionAmount;   // amount of commission to be returned
 //    	int64 paymentID;         // id of payment to be reversed
+//    	int64 performedAt;       // time when payment was performed
 //    };
 //
 type PaymentReversalOp struct {
@@ -2211,6 +2348,7 @@ type PaymentReversalOp struct {
 	Amount           Int64
 	CommissionAmount Int64
 	PaymentId        Int64
+	PerformedAt      Int64
 }
 
 // RefundOp is an XDR Struct defines as:
@@ -3414,35 +3552,53 @@ type ClaimOfferAtom struct {
 //        CREATE_ACCOUNT_WRONG_TYPE = -6,
 //        CREATE_ACCOUNT_LINE_FULL = -7,
 //        CREATE_ACCOUNT_NO_ISSUER = -8,
-//    	CREATE_ACCOUNT_ASSET_NOT_ALLOWED = -9
+//    	CREATE_ACCOUNT_ASSET_NOT_ALLOWED = -9,
+//    	CREATE_ACCOUNT_SRC_ASSET_LIMITS_EXCEEDED = -10, // source account exceeded asset limits
+//    	CREATE_ACCOUNT_DEST_ASSET_LIMITS_EXCEEDED = -11, // dest account exceeded asset limits
+//    	CREATE_ACCOUNT_COMMISSION_ASSET_LIMITS_EXCEEDED = -12,
+//    	CREATE_ACCOUNT_SRC_STATS_OVERFLOW = -13,
+//    	CREATE_ACCOUNT_DEST_STATS_OVERFLOW = -14,
+//    	CREATE_ACCOUNT_COM_STATS_OVERFLOW = -15
 //    };
 //
 type CreateAccountResultCode int32
 
 const (
-	CreateAccountResultCodeCreateAccountSuccess           CreateAccountResultCode = 0
-	CreateAccountResultCodeCreateAccountMalformed         CreateAccountResultCode = -1
-	CreateAccountResultCodeCreateAccountUnderfunded       CreateAccountResultCode = -2
-	CreateAccountResultCodeCreateAccountLowReserve        CreateAccountResultCode = -3
-	CreateAccountResultCodeCreateAccountAlreadyExist      CreateAccountResultCode = -4
-	CreateAccountResultCodeCreateAccountNotAuthorizedType CreateAccountResultCode = -5
-	CreateAccountResultCodeCreateAccountWrongType         CreateAccountResultCode = -6
-	CreateAccountResultCodeCreateAccountLineFull          CreateAccountResultCode = -7
-	CreateAccountResultCodeCreateAccountNoIssuer          CreateAccountResultCode = -8
-	CreateAccountResultCodeCreateAccountAssetNotAllowed   CreateAccountResultCode = -9
+	CreateAccountResultCodeCreateAccountSuccess                       CreateAccountResultCode = 0
+	CreateAccountResultCodeCreateAccountMalformed                     CreateAccountResultCode = -1
+	CreateAccountResultCodeCreateAccountUnderfunded                   CreateAccountResultCode = -2
+	CreateAccountResultCodeCreateAccountLowReserve                    CreateAccountResultCode = -3
+	CreateAccountResultCodeCreateAccountAlreadyExist                  CreateAccountResultCode = -4
+	CreateAccountResultCodeCreateAccountNotAuthorizedType             CreateAccountResultCode = -5
+	CreateAccountResultCodeCreateAccountWrongType                     CreateAccountResultCode = -6
+	CreateAccountResultCodeCreateAccountLineFull                      CreateAccountResultCode = -7
+	CreateAccountResultCodeCreateAccountNoIssuer                      CreateAccountResultCode = -8
+	CreateAccountResultCodeCreateAccountAssetNotAllowed               CreateAccountResultCode = -9
+	CreateAccountResultCodeCreateAccountSrcAssetLimitsExceeded        CreateAccountResultCode = -10
+	CreateAccountResultCodeCreateAccountDestAssetLimitsExceeded       CreateAccountResultCode = -11
+	CreateAccountResultCodeCreateAccountCommissionAssetLimitsExceeded CreateAccountResultCode = -12
+	CreateAccountResultCodeCreateAccountSrcStatsOverflow              CreateAccountResultCode = -13
+	CreateAccountResultCodeCreateAccountDestStatsOverflow             CreateAccountResultCode = -14
+	CreateAccountResultCodeCreateAccountComStatsOverflow              CreateAccountResultCode = -15
 )
 
 var createAccountResultCodeMap = map[int32]string{
-	0:  "CreateAccountResultCodeCreateAccountSuccess",
-	-1: "CreateAccountResultCodeCreateAccountMalformed",
-	-2: "CreateAccountResultCodeCreateAccountUnderfunded",
-	-3: "CreateAccountResultCodeCreateAccountLowReserve",
-	-4: "CreateAccountResultCodeCreateAccountAlreadyExist",
-	-5: "CreateAccountResultCodeCreateAccountNotAuthorizedType",
-	-6: "CreateAccountResultCodeCreateAccountWrongType",
-	-7: "CreateAccountResultCodeCreateAccountLineFull",
-	-8: "CreateAccountResultCodeCreateAccountNoIssuer",
-	-9: "CreateAccountResultCodeCreateAccountAssetNotAllowed",
+	0:   "CreateAccountResultCodeCreateAccountSuccess",
+	-1:  "CreateAccountResultCodeCreateAccountMalformed",
+	-2:  "CreateAccountResultCodeCreateAccountUnderfunded",
+	-3:  "CreateAccountResultCodeCreateAccountLowReserve",
+	-4:  "CreateAccountResultCodeCreateAccountAlreadyExist",
+	-5:  "CreateAccountResultCodeCreateAccountNotAuthorizedType",
+	-6:  "CreateAccountResultCodeCreateAccountWrongType",
+	-7:  "CreateAccountResultCodeCreateAccountLineFull",
+	-8:  "CreateAccountResultCodeCreateAccountNoIssuer",
+	-9:  "CreateAccountResultCodeCreateAccountAssetNotAllowed",
+	-10: "CreateAccountResultCodeCreateAccountSrcAssetLimitsExceeded",
+	-11: "CreateAccountResultCodeCreateAccountDestAssetLimitsExceeded",
+	-12: "CreateAccountResultCodeCreateAccountCommissionAssetLimitsExceeded",
+	-13: "CreateAccountResultCodeCreateAccountSrcStatsOverflow",
+	-14: "CreateAccountResultCodeCreateAccountDestStatsOverflow",
+	-15: "CreateAccountResultCodeCreateAccountComStatsOverflow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3518,23 +3674,36 @@ func NewCreateAccountResult(code CreateAccountResultCode, value interface{}) (re
 //        PAYMENT_NOT_AUTHORIZED = -7, // destination not authorized to hold asset
 //        PAYMENT_LINE_FULL = -8,      // destination would go above their limit
 //        PAYMENT_NO_ISSUER = -9,       // missing issuer on asset
-//    	PAYMENT_ASSET_NOT_ALLOWED = -10  // asset is not allowed
+//    	PAYMENT_ASSET_NOT_ALLOWED = -10,  // asset is not allowed
+//    	PAYMENT_SRC_ASSET_LIMITS_EXCEEDED = -11, // source account exceeded asset limits
+//    	PAYMENT_DEST_ASSET_LIMITS_EXCEEDED = -12, // dest account exceeded asset limits
+//    	PAYMENT_COMMISSION_ASSET_LIMITS_EXCEEDED = -13,
+//    	PAYMENT_SRC_STATS_OVERFLOW = -14,
+//    	PAYMENT_DEST_STATS_OVERFLOW = -15,
+//    	PAYMENT_COM_STATS_OVERFLOW = -16
+//
 //    };
 //
 type PaymentResultCode int32
 
 const (
-	PaymentResultCodePaymentSuccess          PaymentResultCode = 0
-	PaymentResultCodePaymentMalformed        PaymentResultCode = -1
-	PaymentResultCodePaymentUnderfunded      PaymentResultCode = -2
-	PaymentResultCodePaymentSrcNoTrust       PaymentResultCode = -3
-	PaymentResultCodePaymentSrcNotAuthorized PaymentResultCode = -4
-	PaymentResultCodePaymentNoDestination    PaymentResultCode = -5
-	PaymentResultCodePaymentNoTrust          PaymentResultCode = -6
-	PaymentResultCodePaymentNotAuthorized    PaymentResultCode = -7
-	PaymentResultCodePaymentLineFull         PaymentResultCode = -8
-	PaymentResultCodePaymentNoIssuer         PaymentResultCode = -9
-	PaymentResultCodePaymentAssetNotAllowed  PaymentResultCode = -10
+	PaymentResultCodePaymentSuccess                       PaymentResultCode = 0
+	PaymentResultCodePaymentMalformed                     PaymentResultCode = -1
+	PaymentResultCodePaymentUnderfunded                   PaymentResultCode = -2
+	PaymentResultCodePaymentSrcNoTrust                    PaymentResultCode = -3
+	PaymentResultCodePaymentSrcNotAuthorized              PaymentResultCode = -4
+	PaymentResultCodePaymentNoDestination                 PaymentResultCode = -5
+	PaymentResultCodePaymentNoTrust                       PaymentResultCode = -6
+	PaymentResultCodePaymentNotAuthorized                 PaymentResultCode = -7
+	PaymentResultCodePaymentLineFull                      PaymentResultCode = -8
+	PaymentResultCodePaymentNoIssuer                      PaymentResultCode = -9
+	PaymentResultCodePaymentAssetNotAllowed               PaymentResultCode = -10
+	PaymentResultCodePaymentSrcAssetLimitsExceeded        PaymentResultCode = -11
+	PaymentResultCodePaymentDestAssetLimitsExceeded       PaymentResultCode = -12
+	PaymentResultCodePaymentCommissionAssetLimitsExceeded PaymentResultCode = -13
+	PaymentResultCodePaymentSrcStatsOverflow              PaymentResultCode = -14
+	PaymentResultCodePaymentDestStatsOverflow             PaymentResultCode = -15
+	PaymentResultCodePaymentComStatsOverflow              PaymentResultCode = -16
 )
 
 var paymentResultCodeMap = map[int32]string{
@@ -3549,6 +3718,12 @@ var paymentResultCodeMap = map[int32]string{
 	-8:  "PaymentResultCodePaymentLineFull",
 	-9:  "PaymentResultCodePaymentNoIssuer",
 	-10: "PaymentResultCodePaymentAssetNotAllowed",
+	-11: "PaymentResultCodePaymentSrcAssetLimitsExceeded",
+	-12: "PaymentResultCodePaymentDestAssetLimitsExceeded",
+	-13: "PaymentResultCodePaymentCommissionAssetLimitsExceeded",
+	-14: "PaymentResultCodePaymentSrcStatsOverflow",
+	-15: "PaymentResultCodePaymentDestStatsOverflow",
+	-16: "PaymentResultCodePaymentComStatsOverflow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3627,26 +3802,38 @@ func NewPaymentResult(code PaymentResultCode, value interface{}) (result Payment
 //        PATH_PAYMENT_TOO_FEW_OFFERS = -10,    // not enough offers to satisfy path
 //        PATH_PAYMENT_OFFER_CROSS_SELF = -11,  // would cross one of its own offers
 //        PATH_PAYMENT_OVER_SENDMAX = -12,      // could not satisfy sendmax
-//    	PATH_PAYMENT_ASSET_NOT_ALLOWED = -13  // asset is not allowed
+//    	PATH_PAYMENT_ASSET_NOT_ALLOWED = -13,  // asset is not allowed
+//    	PATH_PAYMENT_SRC_ASSET_LIMITS_EXCEEDED = -14, // source account exceeded asset limits
+//    	PATH_PAYMENT_DEST_ASSET_LIMITS_EXCEEDED = -15, // dest account exceeded asset limits
+//    	PATH_PAYMENT_COMMISSION_ASSET_LIMITS_EXCEEDED = -16,
+//    	PATH_PAYMENT_SRC_STATS_OVERFLOW = -17,
+//    	PATH_PAYMENT_DEST_STATS_OVERFLOW = -18,
+//    	PATH_PAYMENT_COM_STATS_OVERFLOW = -19
 //    };
 //
 type PathPaymentResultCode int32
 
 const (
-	PathPaymentResultCodePathPaymentSuccess          PathPaymentResultCode = 0
-	PathPaymentResultCodePathPaymentMalformed        PathPaymentResultCode = -1
-	PathPaymentResultCodePathPaymentUnderfunded      PathPaymentResultCode = -2
-	PathPaymentResultCodePathPaymentSrcNoTrust       PathPaymentResultCode = -3
-	PathPaymentResultCodePathPaymentSrcNotAuthorized PathPaymentResultCode = -4
-	PathPaymentResultCodePathPaymentNoDestination    PathPaymentResultCode = -5
-	PathPaymentResultCodePathPaymentNoTrust          PathPaymentResultCode = -6
-	PathPaymentResultCodePathPaymentNotAuthorized    PathPaymentResultCode = -7
-	PathPaymentResultCodePathPaymentLineFull         PathPaymentResultCode = -8
-	PathPaymentResultCodePathPaymentNoIssuer         PathPaymentResultCode = -9
-	PathPaymentResultCodePathPaymentTooFewOffers     PathPaymentResultCode = -10
-	PathPaymentResultCodePathPaymentOfferCrossSelf   PathPaymentResultCode = -11
-	PathPaymentResultCodePathPaymentOverSendmax      PathPaymentResultCode = -12
-	PathPaymentResultCodePathPaymentAssetNotAllowed  PathPaymentResultCode = -13
+	PathPaymentResultCodePathPaymentSuccess                       PathPaymentResultCode = 0
+	PathPaymentResultCodePathPaymentMalformed                     PathPaymentResultCode = -1
+	PathPaymentResultCodePathPaymentUnderfunded                   PathPaymentResultCode = -2
+	PathPaymentResultCodePathPaymentSrcNoTrust                    PathPaymentResultCode = -3
+	PathPaymentResultCodePathPaymentSrcNotAuthorized              PathPaymentResultCode = -4
+	PathPaymentResultCodePathPaymentNoDestination                 PathPaymentResultCode = -5
+	PathPaymentResultCodePathPaymentNoTrust                       PathPaymentResultCode = -6
+	PathPaymentResultCodePathPaymentNotAuthorized                 PathPaymentResultCode = -7
+	PathPaymentResultCodePathPaymentLineFull                      PathPaymentResultCode = -8
+	PathPaymentResultCodePathPaymentNoIssuer                      PathPaymentResultCode = -9
+	PathPaymentResultCodePathPaymentTooFewOffers                  PathPaymentResultCode = -10
+	PathPaymentResultCodePathPaymentOfferCrossSelf                PathPaymentResultCode = -11
+	PathPaymentResultCodePathPaymentOverSendmax                   PathPaymentResultCode = -12
+	PathPaymentResultCodePathPaymentAssetNotAllowed               PathPaymentResultCode = -13
+	PathPaymentResultCodePathPaymentSrcAssetLimitsExceeded        PathPaymentResultCode = -14
+	PathPaymentResultCodePathPaymentDestAssetLimitsExceeded       PathPaymentResultCode = -15
+	PathPaymentResultCodePathPaymentCommissionAssetLimitsExceeded PathPaymentResultCode = -16
+	PathPaymentResultCodePathPaymentSrcStatsOverflow              PathPaymentResultCode = -17
+	PathPaymentResultCodePathPaymentDestStatsOverflow             PathPaymentResultCode = -18
+	PathPaymentResultCodePathPaymentComStatsOverflow              PathPaymentResultCode = -19
 )
 
 var pathPaymentResultCodeMap = map[int32]string{
@@ -3664,6 +3851,12 @@ var pathPaymentResultCodeMap = map[int32]string{
 	-11: "PathPaymentResultCodePathPaymentOfferCrossSelf",
 	-12: "PathPaymentResultCodePathPaymentOverSendmax",
 	-13: "PathPaymentResultCodePathPaymentAssetNotAllowed",
+	-14: "PathPaymentResultCodePathPaymentSrcAssetLimitsExceeded",
+	-15: "PathPaymentResultCodePathPaymentDestAssetLimitsExceeded",
+	-16: "PathPaymentResultCodePathPaymentCommissionAssetLimitsExceeded",
+	-17: "PathPaymentResultCodePathPaymentSrcStatsOverflow",
+	-18: "PathPaymentResultCodePathPaymentDestStatsOverflow",
+	-19: "PathPaymentResultCodePathPaymentComStatsOverflow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4228,7 +4421,8 @@ func NewSetOptionsResult(code SetOptionsResultCode, value interface{}) (result S
 //        CHANGE_TRUST_INVALID_LIMIT = -3,    // cannot drop limit below balance
 //                                            // cannot create with a limit of 0
 //        CHANGE_TRUST_LOW_RESERVE = -4,      // not enough funds to create a new trust line
-//    	CHANGE_TRUST_ASSET_NOT_ALLOWED = -5 // asset is not allowed
+//    	CHANGE_TRUST_ASSET_NOT_ALLOWED = -5, // asset is not allowed
+//    	CHANGE_TRUST_NOT_AUTHORIZED = -6     // account not authorized to use asset
 //    };
 //
 type ChangeTrustResultCode int32
@@ -4240,6 +4434,7 @@ const (
 	ChangeTrustResultCodeChangeTrustInvalidLimit    ChangeTrustResultCode = -3
 	ChangeTrustResultCodeChangeTrustLowReserve      ChangeTrustResultCode = -4
 	ChangeTrustResultCodeChangeTrustAssetNotAllowed ChangeTrustResultCode = -5
+	ChangeTrustResultCodeChangeTrustNotAuthorized   ChangeTrustResultCode = -6
 )
 
 var changeTrustResultCodeMap = map[int32]string{
@@ -4249,6 +4444,7 @@ var changeTrustResultCodeMap = map[int32]string{
 	-3: "ChangeTrustResultCodeChangeTrustInvalidLimit",
 	-4: "ChangeTrustResultCodeChangeTrustLowReserve",
 	-5: "ChangeTrustResultCodeChangeTrustAssetNotAllowed",
+	-6: "ChangeTrustResultCodeChangeTrustNotAuthorized",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4831,33 +5027,45 @@ func NewAdministrativeResult(code AdministrativeResultCode, value interface{}) (
 //    	PAYMENT_REVERSAL_MALFORMED = -17,                    // reversal payment is malformed in some way
 //    	PAYMENT_REVERSAL_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
 //    	PAYMENT_REVERSAL_ALREADY_REVERSED = -19,             // payment already have been reversed
-//    	PAYMENT_REVERSAL_ASSET_NOT_ALLOWED = -20             // asset is not allowed
+//    	PAYMENT_REVERSAL_ASSET_NOT_ALLOWED = -20,             // asset is not allowed
+//    	PAYMENT_REVERSAL_SRC_ASSET_LIMITS_EXCEEDED = -21, // source account exceeded asset limits
+//    	PAYMENT_REVERSAL_DEST_ASSET_LIMITS_EXCEEDED = -22, // dest account exceeded asset limits
+//    	PAYMENT_REVERSAL_COMMISSION_ASSET_LIMITS_EXCEEDED = -23,
+//    	PAYMENT_REVERSAL_SRC_STATS_OVERFLOW = -24,
+//    	PAYMENT_REVERSAL_DEST_STATS_OVERFLOW = -25,
+//    	PAYMENT_REVERSAL_COM_STATS_OVERFLOW = -26
 //    };
 //
 type PaymentReversalResultCode int32
 
 const (
-	PaymentReversalResultCodePaymentReversalSuccess                    PaymentReversalResultCode = 0
-	PaymentReversalResultCodePaymentReversalUnderfunded                PaymentReversalResultCode = -1
-	PaymentReversalResultCodePaymentReversalSrcNoTrust                 PaymentReversalResultCode = -2
-	PaymentReversalResultCodePaymentReversalSrcNotAuthorized           PaymentReversalResultCode = -3
-	PaymentReversalResultCodePaymentReversalNoPaymentSender            PaymentReversalResultCode = -4
-	PaymentReversalResultCodePaymentReversalNoPaymentSenderTrust       PaymentReversalResultCode = -5
-	PaymentReversalResultCodePaymentReversalPaymentSenderNotAuthorized PaymentReversalResultCode = -6
-	PaymentReversalResultCodePaymentReversalPaymentSenderLineFull      PaymentReversalResultCode = -7
-	PaymentReversalResultCodePaymentReversalNoIssuer                   PaymentReversalResultCode = -8
-	PaymentReversalResultCodePaymentReversalCommissionUnderfunded      PaymentReversalResultCode = -9
-	PaymentReversalResultCodePaymentReversalPaymentExpired             PaymentReversalResultCode = -10
-	PaymentReversalResultCodePaymentReversalPaymentDoesNotExists       PaymentReversalResultCode = -11
-	PaymentReversalResultCodePaymentReversalInvalidAmount              PaymentReversalResultCode = -12
-	PaymentReversalResultCodePaymentReversalInvalidCommission          PaymentReversalResultCode = -13
-	PaymentReversalResultCodePaymentReversalInvalidPaymentSender       PaymentReversalResultCode = -14
-	PaymentReversalResultCodePaymentReversalInvalidSource              PaymentReversalResultCode = -15
-	PaymentReversalResultCodePaymentReversalInvalidAsset               PaymentReversalResultCode = -16
-	PaymentReversalResultCodePaymentReversalMalformed                  PaymentReversalResultCode = -17
-	PaymentReversalResultCodePaymentReversalNotAllowed                 PaymentReversalResultCode = -18
-	PaymentReversalResultCodePaymentReversalAlreadyReversed            PaymentReversalResultCode = -19
-	PaymentReversalResultCodePaymentReversalAssetNotAllowed            PaymentReversalResultCode = -20
+	PaymentReversalResultCodePaymentReversalSuccess                       PaymentReversalResultCode = 0
+	PaymentReversalResultCodePaymentReversalUnderfunded                   PaymentReversalResultCode = -1
+	PaymentReversalResultCodePaymentReversalSrcNoTrust                    PaymentReversalResultCode = -2
+	PaymentReversalResultCodePaymentReversalSrcNotAuthorized              PaymentReversalResultCode = -3
+	PaymentReversalResultCodePaymentReversalNoPaymentSender               PaymentReversalResultCode = -4
+	PaymentReversalResultCodePaymentReversalNoPaymentSenderTrust          PaymentReversalResultCode = -5
+	PaymentReversalResultCodePaymentReversalPaymentSenderNotAuthorized    PaymentReversalResultCode = -6
+	PaymentReversalResultCodePaymentReversalPaymentSenderLineFull         PaymentReversalResultCode = -7
+	PaymentReversalResultCodePaymentReversalNoIssuer                      PaymentReversalResultCode = -8
+	PaymentReversalResultCodePaymentReversalCommissionUnderfunded         PaymentReversalResultCode = -9
+	PaymentReversalResultCodePaymentReversalPaymentExpired                PaymentReversalResultCode = -10
+	PaymentReversalResultCodePaymentReversalPaymentDoesNotExists          PaymentReversalResultCode = -11
+	PaymentReversalResultCodePaymentReversalInvalidAmount                 PaymentReversalResultCode = -12
+	PaymentReversalResultCodePaymentReversalInvalidCommission             PaymentReversalResultCode = -13
+	PaymentReversalResultCodePaymentReversalInvalidPaymentSender          PaymentReversalResultCode = -14
+	PaymentReversalResultCodePaymentReversalInvalidSource                 PaymentReversalResultCode = -15
+	PaymentReversalResultCodePaymentReversalInvalidAsset                  PaymentReversalResultCode = -16
+	PaymentReversalResultCodePaymentReversalMalformed                     PaymentReversalResultCode = -17
+	PaymentReversalResultCodePaymentReversalNotAllowed                    PaymentReversalResultCode = -18
+	PaymentReversalResultCodePaymentReversalAlreadyReversed               PaymentReversalResultCode = -19
+	PaymentReversalResultCodePaymentReversalAssetNotAllowed               PaymentReversalResultCode = -20
+	PaymentReversalResultCodePaymentReversalSrcAssetLimitsExceeded        PaymentReversalResultCode = -21
+	PaymentReversalResultCodePaymentReversalDestAssetLimitsExceeded       PaymentReversalResultCode = -22
+	PaymentReversalResultCodePaymentReversalCommissionAssetLimitsExceeded PaymentReversalResultCode = -23
+	PaymentReversalResultCodePaymentReversalSrcStatsOverflow              PaymentReversalResultCode = -24
+	PaymentReversalResultCodePaymentReversalDestStatsOverflow             PaymentReversalResultCode = -25
+	PaymentReversalResultCodePaymentReversalComStatsOverflow              PaymentReversalResultCode = -26
 )
 
 var paymentReversalResultCodeMap = map[int32]string{
@@ -4882,6 +5090,12 @@ var paymentReversalResultCodeMap = map[int32]string{
 	-18: "PaymentReversalResultCodePaymentReversalNotAllowed",
 	-19: "PaymentReversalResultCodePaymentReversalAlreadyReversed",
 	-20: "PaymentReversalResultCodePaymentReversalAssetNotAllowed",
+	-21: "PaymentReversalResultCodePaymentReversalSrcAssetLimitsExceeded",
+	-22: "PaymentReversalResultCodePaymentReversalDestAssetLimitsExceeded",
+	-23: "PaymentReversalResultCodePaymentReversalCommissionAssetLimitsExceeded",
+	-24: "PaymentReversalResultCodePaymentReversalSrcStatsOverflow",
+	-25: "PaymentReversalResultCodePaymentReversalDestStatsOverflow",
+	-26: "PaymentReversalResultCodePaymentReversalComStatsOverflow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -4964,30 +5178,42 @@ func NewPaymentReversalResult(code PaymentReversalResultCode, value interface{})
 //        REFUND_MALFORMED = -17,                    // reversal payment is malformed in some way
 //        REFUND_NOT_ALLOWED = -18,                  // reversal payment is not allowed for this account type
 //        REFUND_ALREADY_REFUNDED = -19,             // payment already have been refunded
-//    	REFUND_ASSET_NOT_ALLOWED = -20                   // asset is not allowed
+//    	REFUND_ASSET_NOT_ALLOWED = -20,                   // asset is not allowed
+//    	REFUND_SRC_ASSET_LIMITS_EXCEEDED = -21, // source account exceeded asset limits
+//    	REFUND_DEST_ASSET_LIMITS_EXCEEDED = -22, // dest account exceeded asset limits
+//    	REFUND_COMMISSION_ASSET_LIMITS_EXCEEDED = -23,
+//    	REFUND_SRC_STATS_OVERFLOW = -24,
+//    	REFUND_DEST_STATS_OVERFLOW = -25,
+//    	REFUND_COM_STATS_OVERFLOW = -26
 //    };
 //
 type RefundResultCode int32
 
 const (
-	RefundResultCodeRefundSuccess                    RefundResultCode = 0
-	RefundResultCodeRefundUnderfunded                RefundResultCode = -1
-	RefundResultCodeRefundSrcNoTrust                 RefundResultCode = -2
-	RefundResultCodeRefundSrcNotAuthorized           RefundResultCode = -3
-	RefundResultCodeRefundNoPaymentSender            RefundResultCode = -4
-	RefundResultCodeRefundNoPaymentSenderTrust       RefundResultCode = -5
-	RefundResultCodeRefundPaymentSenderNotAuthorized RefundResultCode = -6
-	RefundResultCodeRefundPaymentSenderLineFull      RefundResultCode = -7
-	RefundResultCodeRefundNoIssuer                   RefundResultCode = -8
-	RefundResultCodeRefundPaymentDoesNotExists       RefundResultCode = -11
-	RefundResultCodeRefundInvalidAmount              RefundResultCode = -12
-	RefundResultCodeRefundInvalidPaymentSender       RefundResultCode = -14
-	RefundResultCodeRefundInvalidSource              RefundResultCode = -15
-	RefundResultCodeRefundInvalidAsset               RefundResultCode = -16
-	RefundResultCodeRefundMalformed                  RefundResultCode = -17
-	RefundResultCodeRefundNotAllowed                 RefundResultCode = -18
-	RefundResultCodeRefundAlreadyRefunded            RefundResultCode = -19
-	RefundResultCodeRefundAssetNotAllowed            RefundResultCode = -20
+	RefundResultCodeRefundSuccess                       RefundResultCode = 0
+	RefundResultCodeRefundUnderfunded                   RefundResultCode = -1
+	RefundResultCodeRefundSrcNoTrust                    RefundResultCode = -2
+	RefundResultCodeRefundSrcNotAuthorized              RefundResultCode = -3
+	RefundResultCodeRefundNoPaymentSender               RefundResultCode = -4
+	RefundResultCodeRefundNoPaymentSenderTrust          RefundResultCode = -5
+	RefundResultCodeRefundPaymentSenderNotAuthorized    RefundResultCode = -6
+	RefundResultCodeRefundPaymentSenderLineFull         RefundResultCode = -7
+	RefundResultCodeRefundNoIssuer                      RefundResultCode = -8
+	RefundResultCodeRefundPaymentDoesNotExists          RefundResultCode = -11
+	RefundResultCodeRefundInvalidAmount                 RefundResultCode = -12
+	RefundResultCodeRefundInvalidPaymentSender          RefundResultCode = -14
+	RefundResultCodeRefundInvalidSource                 RefundResultCode = -15
+	RefundResultCodeRefundInvalidAsset                  RefundResultCode = -16
+	RefundResultCodeRefundMalformed                     RefundResultCode = -17
+	RefundResultCodeRefundNotAllowed                    RefundResultCode = -18
+	RefundResultCodeRefundAlreadyRefunded               RefundResultCode = -19
+	RefundResultCodeRefundAssetNotAllowed               RefundResultCode = -20
+	RefundResultCodeRefundSrcAssetLimitsExceeded        RefundResultCode = -21
+	RefundResultCodeRefundDestAssetLimitsExceeded       RefundResultCode = -22
+	RefundResultCodeRefundCommissionAssetLimitsExceeded RefundResultCode = -23
+	RefundResultCodeRefundSrcStatsOverflow              RefundResultCode = -24
+	RefundResultCodeRefundDestStatsOverflow             RefundResultCode = -25
+	RefundResultCodeRefundComStatsOverflow              RefundResultCode = -26
 )
 
 var refundResultCodeMap = map[int32]string{
@@ -5009,6 +5235,12 @@ var refundResultCodeMap = map[int32]string{
 	-18: "RefundResultCodeRefundNotAllowed",
 	-19: "RefundResultCodeRefundAlreadyRefunded",
 	-20: "RefundResultCodeRefundAssetNotAllowed",
+	-21: "RefundResultCodeRefundSrcAssetLimitsExceeded",
+	-22: "RefundResultCodeRefundDestAssetLimitsExceeded",
+	-23: "RefundResultCodeRefundCommissionAssetLimitsExceeded",
+	-24: "RefundResultCodeRefundSrcStatsOverflow",
+	-25: "RefundResultCodeRefundDestStatsOverflow",
+	-26: "RefundResultCodeRefundComStatsOverflow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -6494,6 +6726,21 @@ type LedgerKeyAsset struct {
 	Asset Asset
 }
 
+// LedgerKeyStats is an XDR NestedStruct defines as:
+//
+//   struct
+//    	{
+//    		AccountID accountID;
+//    		Asset asset;
+//    		AccountType counterpartyType;
+//    	}
+//
+type LedgerKeyStats struct {
+	AccountId        AccountId
+	Asset            Asset
+	CounterpartyType AccountType
+}
+
 // LedgerKey is an XDR Union defines as:
 //
 //   union LedgerKey switch (LedgerEntryType type)
@@ -6539,6 +6786,13 @@ type LedgerKeyAsset struct {
 //    	{
 //    		Asset asset;
 //    	} asset;
+//    case STATISTICS:
+//    	struct
+//    	{
+//    		AccountID accountID;
+//    		Asset asset;
+//    		AccountType counterpartyType;
+//    	} stats;
 //    };
 //
 type LedgerKey struct {
@@ -6550,6 +6804,7 @@ type LedgerKey struct {
 	ReversedPayment *LedgerKeyReversedPayment
 	RefundedPayment *LedgerKeyRefundedPayment
 	Asset           *LedgerKeyAsset
+	Stats           *LedgerKeyStats
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -6576,6 +6831,8 @@ func (u LedgerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "RefundedPayment", true
 	case LedgerEntryTypeAsset:
 		return "Asset", true
+	case LedgerEntryTypeStatistics:
+		return "Stats", true
 	}
 	return "-", false
 }
@@ -6633,6 +6890,13 @@ func NewLedgerKey(aType LedgerEntryType, value interface{}) (result LedgerKey, e
 			return
 		}
 		result.Asset = &tv
+	case LedgerEntryTypeStatistics:
+		tv, ok := value.(LedgerKeyStats)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerKeyStats")
+			return
+		}
+		result.Stats = &tv
 	}
 	return
 }
@@ -6806,6 +7070,31 @@ func (u LedgerKey) GetAsset() (result LedgerKeyAsset, ok bool) {
 
 	if armName == "Asset" {
 		result = *u.Asset
+		ok = true
+	}
+
+	return
+}
+
+// MustStats retrieves the Stats value from the union,
+// panicing if the value is not set.
+func (u LedgerKey) MustStats() LedgerKeyStats {
+	val, ok := u.GetStats()
+
+	if !ok {
+		panic("arm Stats is not set")
+	}
+
+	return val
+}
+
+// GetStats retrieves the Stats value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerKey) GetStats() (result LedgerKeyStats, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Stats" {
+		result = *u.Stats
 		ok = true
 	}
 
