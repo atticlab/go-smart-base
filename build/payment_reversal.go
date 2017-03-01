@@ -7,6 +7,8 @@ import (
 	"bitbucket.org/atticlab/go-smart-base/xdr"
 )
 
+type PerformedAt int64
+
 // PaymentReversal groups the creation of a new PaymentReversalBuilder with a call to Mutate.
 func PaymentReversal(muts ...interface{}) (result PaymentReversalBuilder) {
 	result.Mutate(muts...)
@@ -98,6 +100,16 @@ func (m PaymentSender) MutatePaymentReversal(o interface{}) error {
 		return errors.New("Unexpected operation type")
 	case *xdr.PaymentReversalOp:
 		return setAccountId(m.AddressOrSeed, &o.PaymentSource)
+	}
+	return nil
+}
+
+func (m PerformedAt) MutatePaymentReversal(o interface{}) error {
+	switch o := o.(type) {
+	default:
+		return errors.New("Unexpected operation type")
+	case *xdr.PaymentReversalOp:
+		o.PerformedAt = xdr.Int64(int64(m))
 	}
 	return nil
 }
