@@ -1,3 +1,4 @@
+source 'https://rubygems.org'
 gem 'xdrgen', git: 'https://github.com/stellar/xdrgen.git'
 gem 'pry'
 gem 'octokit'
