@@ -3354,35 +3354,50 @@ func NewCreateAccountResult(code CreateAccountResultCode, value interface{}) (re
 //        PAYMENT_NO_TRUST = -6,       // destination missing a trust line for asset
 //        PAYMENT_NOT_AUTHORIZED = -7, // destination not authorized to hold asset
 //        PAYMENT_LINE_FULL = -8,      // destination would go above their limit
-//        PAYMENT_NO_ISSUER = -9       // missing issuer on asset
+//        PAYMENT_NO_ISSUER = -9,       // missing issuer on asset
+//        PAYMENT_FEE_ASSET_MISMATCH = -10,   // the fee asset is different from the operation asset
+//        PAYMENT_NEGATIVE_FEE = -11,         // the fee can't be negative
+//        PAYMENT_NEGATIVE_AMOUNT = -12,      // the amount is negative
+//        PAYMENT_AMOUNT_LESS_THAN_FEE = -13, // the fee is more than the sent amount
+//        PAYMENT_INVALID_ASSET = -14         // the asset is invalid
 //    };
 //
 type PaymentResultCode int32
 
 const (
-	PaymentResultCodePaymentSuccess          PaymentResultCode = 0
-	PaymentResultCodePaymentMalformed        PaymentResultCode = -1
-	PaymentResultCodePaymentUnderfunded      PaymentResultCode = -2
-	PaymentResultCodePaymentSrcNoTrust       PaymentResultCode = -3
-	PaymentResultCodePaymentSrcNotAuthorized PaymentResultCode = -4
-	PaymentResultCodePaymentNoDestination    PaymentResultCode = -5
-	PaymentResultCodePaymentNoTrust          PaymentResultCode = -6
-	PaymentResultCodePaymentNotAuthorized    PaymentResultCode = -7
-	PaymentResultCodePaymentLineFull         PaymentResultCode = -8
-	PaymentResultCodePaymentNoIssuer         PaymentResultCode = -9
+	PaymentResultCodePaymentSuccess           PaymentResultCode = 0
+	PaymentResultCodePaymentMalformed         PaymentResultCode = -1
+	PaymentResultCodePaymentUnderfunded       PaymentResultCode = -2
+	PaymentResultCodePaymentSrcNoTrust        PaymentResultCode = -3
+	PaymentResultCodePaymentSrcNotAuthorized  PaymentResultCode = -4
+	PaymentResultCodePaymentNoDestination     PaymentResultCode = -5
+	PaymentResultCodePaymentNoTrust           PaymentResultCode = -6
+	PaymentResultCodePaymentNotAuthorized     PaymentResultCode = -7
+	PaymentResultCodePaymentLineFull          PaymentResultCode = -8
+	PaymentResultCodePaymentNoIssuer          PaymentResultCode = -9
+	PaymentResultCodePaymentFeeAssetMismatch  PaymentResultCode = -10
+	PaymentResultCodePaymentNegativeFee       PaymentResultCode = -11
+	PaymentResultCodePaymentNegativeAmount    PaymentResultCode = -12
+	PaymentResultCodePaymentAmountLessThanFee PaymentResultCode = -13
+	PaymentResultCodePaymentInvalidAsset      PaymentResultCode = -14
 )
 
 var paymentResultCodeMap = map[int32]string{
-	0:  "PaymentResultCodePaymentSuccess",
-	-1: "PaymentResultCodePaymentMalformed",
-	-2: "PaymentResultCodePaymentUnderfunded",
-	-3: "PaymentResultCodePaymentSrcNoTrust",
-	-4: "PaymentResultCodePaymentSrcNotAuthorized",
-	-5: "PaymentResultCodePaymentNoDestination",
-	-6: "PaymentResultCodePaymentNoTrust",
-	-7: "PaymentResultCodePaymentNotAuthorized",
-	-8: "PaymentResultCodePaymentLineFull",
-	-9: "PaymentResultCodePaymentNoIssuer",
+	0:   "PaymentResultCodePaymentSuccess",
+	-1:  "PaymentResultCodePaymentMalformed",
+	-2:  "PaymentResultCodePaymentUnderfunded",
+	-3:  "PaymentResultCodePaymentSrcNoTrust",
+	-4:  "PaymentResultCodePaymentSrcNotAuthorized",
+	-5:  "PaymentResultCodePaymentNoDestination",
+	-6:  "PaymentResultCodePaymentNoTrust",
+	-7:  "PaymentResultCodePaymentNotAuthorized",
+	-8:  "PaymentResultCodePaymentLineFull",
+	-9:  "PaymentResultCodePaymentNoIssuer",
+	-10: "PaymentResultCodePaymentFeeAssetMismatch",
+	-11: "PaymentResultCodePaymentNegativeFee",
+	-12: "PaymentResultCodePaymentNegativeAmount",
+	-13: "PaymentResultCodePaymentAmountLessThanFee",
+	-14: "PaymentResultCodePaymentInvalidAsset",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -5599,7 +5614,8 @@ func (u OperationResult) GetTr() (result OperationResultTr, ok bool) {
 //        txNO_ACCOUNT = -8,           // source account not found
 //        txINSUFFICIENT_FEE = -9,     // fee is too small
 //        txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
-//        txINTERNAL_ERROR = -11       // an unknown error occured
+//        txINTERNAL_ERROR = -11,      // an unknown error occured
+//        txFEE_COUNT_MISMATCH = -12   // the number of fees differs from the number of opeartions
 //    };
 //
 type TransactionResultCode int32
@@ -5617,6 +5633,7 @@ const (
 	TransactionResultCodeTxInsufficientFee     TransactionResultCode = -9
 	TransactionResultCodeTxBadAuthExtra        TransactionResultCode = -10
 	TransactionResultCodeTxInternalError       TransactionResultCode = -11
+	TransactionResultCodeTxFeeCountMismatch    TransactionResultCode = -12
 )
 
 var transactionResultCodeMap = map[int32]string{
@@ -5632,6 +5649,7 @@ var transactionResultCodeMap = map[int32]string{
 	-9:  "TransactionResultCodeTxInsufficientFee",
 	-10: "TransactionResultCodeTxBadAuthExtra",
 	-11: "TransactionResultCodeTxInternalError",
+	-12: "TransactionResultCodeTxFeeCountMismatch",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
