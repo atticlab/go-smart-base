@@ -306,11 +306,21 @@ type Thresholds [4]byte
 //
 type String32 string
 
+// XDRMaxSize implements the Sized interface for String32
+func (e String32) XDRMaxSize() int {
+	return 32
+}
+
 // String64 is an XDR Typedef defines as:
 //
 //   typedef string string64<64>;
 //
 type String64 string
+
+// XDRMaxSize implements the Sized interface for String64
+func (e String64) XDRMaxSize() int {
+	return 64
+}
 
 // LongString is an XDR Typedef defines as:
 //
@@ -836,7 +846,7 @@ type AccountEntry struct {
 	HomeDomain    String32
 	AccountType   Uint32
 	Thresholds    Thresholds
-	Signers       []Signer
+	Signers       []Signer `xdrmaxsize:"200"`
 	Ext           AccountEntryExt
 }
 
@@ -1739,7 +1749,7 @@ type PathPaymentOp struct {
 	Destination AccountId
 	DestAsset   Asset
 	DestAmount  Int64
-	Path        []Asset
+	Path        []Asset `xdrmaxsize:"5"`
 }
 
 // ManageOfferOp is an XDR Struct defines as:
@@ -2890,7 +2900,7 @@ type Transaction struct {
 	SeqNum        SequenceNumber
 	TimeBounds    *TimeBounds
 	Memo          Memo
-	Operations    []Operation
+	Operations    []Operation `xdrmaxsize:"100"`
 	Ext           TransactionExt
 }
 
@@ -3089,8 +3099,8 @@ func (u OperationFee) GetFee() (result OperationFeeFee, ok bool) {
 //
 type TransactionEnvelope struct {
 	Tx            Transaction
-	Signatures    []DecoratedSignature
-	OperationFees []OperationFee
+	Signatures    []DecoratedSignature `xdrmaxsize:"20"`
+	OperationFees []OperationFee       `xdrmaxsize:"100"`
 }
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -5597,7 +5607,7 @@ func NewStellarValueExt(v int32, value interface{}) (result StellarValueExt, err
 type StellarValue struct {
 	TxSetHash Hash
 	CloseTime Uint64
-	Upgrades  []UpgradeType
+	Upgrades  []UpgradeType `xdrmaxsize:"6"`
 	Ext       StellarValueExt
 }
 
@@ -6291,7 +6301,7 @@ const MaxTxPerLedger = 5000
 //
 type TransactionSet struct {
 	PreviousLedgerHash Hash
-	Txs                []TransactionEnvelope
+	Txs                []TransactionEnvelope `xdrmaxsize:"5000"`
 }
 
 // TransactionResultPair is an XDR Struct defines as:
@@ -6315,7 +6325,7 @@ type TransactionResultPair struct {
 //    };
 //
 type TransactionResultSet struct {
-	Results []TransactionResultPair
+	Results []TransactionResultPair `xdrmaxsize:"5000"`
 }
 
 // TransactionHistoryEntryExt is an XDR NestedUnion defines as:
@@ -6950,7 +6960,7 @@ func (e ErrorCode) String() string {
 //
 type Error struct {
 	Code ErrorCode
-	Msg  string
+	Msg  string `xdrmaxsize:"100"`
 }
 
 // AuthCert is an XDR Struct defines as:
@@ -6988,7 +6998,7 @@ type Hello struct {
 	OverlayVersion    Uint32
 	OverlayMinVersion Uint32
 	NetworkId         Hash
-	VersionStr        string
+	VersionStr        string `xdrmaxsize:"100"`
 	ListeningPort     int32
 	PeerId            NodeId
 	Cert              AuthCert
