@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 
-	"bitbucket.org/atticlab/go-smart-base/keypair"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/keypair"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // TransactionEnvelopeMutator is a interface that wraps the

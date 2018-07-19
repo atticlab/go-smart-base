@@ -1,7 +1,7 @@
 package strkey_test
 
 import (
-	. "bitbucket.org/atticlab/go-smart-base/strkey"
+	. "github.com/atticlab/go-smart-base/strkey"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

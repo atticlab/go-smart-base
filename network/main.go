@@ -1,7 +1,7 @@
 package network
 
 import (
-	"bitbucket.org/atticlab/go-smart-base/hash"
+	"github.com/atticlab/go-smart-base/hash"
 )
 
 const (

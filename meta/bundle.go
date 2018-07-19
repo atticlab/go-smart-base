@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // ErrMetaNotFound is returned when no meta that matches a provided filter can

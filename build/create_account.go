@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // CreateAccount groups the creation of a new CreateAccountBuilder with a call

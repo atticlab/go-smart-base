@@ -3,7 +3,7 @@ package build
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"bitbucket.org/atticlab/go-smart-base"
+	"github.com/atticlab/go-smart-base"
 )
 
 var _ = Describe("AccountMergeBuilder Mutators", func() {

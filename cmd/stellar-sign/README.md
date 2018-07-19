@@ -9,7 +9,7 @@ This folder contains `stellar-sign` a simple utility to make it easy to add your
 ## Installing
 
 ```bash
-$ go get -u bitbucket.org/atticlab/go-smart-base/cmd/stellar-sign
+$ go get -u github.com/atticlab/go-smart-base/cmd/stellar-sign
 ```
 
 ## Running

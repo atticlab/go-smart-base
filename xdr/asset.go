@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/atticlab/go-smart-base/strkey"
+	"github.com/atticlab/go-smart-base/strkey"
 )
 
 // This file contains helpers for working with xdr.Asset structs

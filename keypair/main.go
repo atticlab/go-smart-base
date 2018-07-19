@@ -5,9 +5,9 @@ import (
 	"errors"
 	"io"
 
-	"bitbucket.org/atticlab/go-smart-base/network"
-	"bitbucket.org/atticlab/go-smart-base/strkey"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/network"
+	"github.com/atticlab/go-smart-base/strkey"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 var (

@@ -3,8 +3,8 @@ package build
 import (
 	"errors"
 
-	"bitbucket.org/atticlab/go-smart-base/amount"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/amount"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // ChangeTrust groups the creation of a new ChangeTrustBuilder with a call to Mutate.

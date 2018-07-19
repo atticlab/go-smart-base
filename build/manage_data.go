@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // ClearData removes a key/value pair associated with the source account
