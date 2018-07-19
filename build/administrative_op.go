@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // AdministrativeOp groups the creation of a new AdministrativeOpBuilder with a call to Mutate.

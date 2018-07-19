@@ -2,8 +2,8 @@ package keypair
 
 import (
 	"github.com/agl/ed25519"
-	"bitbucket.org/atticlab/go-smart-base/strkey"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/strkey"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // FromAddress represents a keypair to which only the address is know.  This KP

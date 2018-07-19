@@ -11,9 +11,9 @@ import (
 	"errors"
 	"math"
 
-	"bitbucket.org/atticlab/go-smart-base/amount"
-	"bitbucket.org/atticlab/go-smart-base/network"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/amount"
+	"github.com/atticlab/go-smart-base/network"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 const (

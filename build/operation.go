@@ -1,7 +1,7 @@
 package build
 
 import (
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // OperationMutator is a interface that wraps the MutateOperation operation.

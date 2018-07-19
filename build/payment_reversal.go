@@ -3,8 +3,8 @@ package build
 import (
 	"errors"
 
-	"bitbucket.org/atticlab/go-smart-base/amount"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/amount"
+	"github.com/atticlab/go-smart-base/xdr"
 )
 
 // PaymentReversal groups the creation of a new PaymentReversalBuilder with a call to Mutate.

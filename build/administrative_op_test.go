@@ -3,8 +3,8 @@ package build
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"bitbucket.org/atticlab/go-smart-base/xdr"
-	"bitbucket.org/atticlab/go-smart-base/keypair"
+	"github.com/atticlab/go-smart-base/xdr"
+	"github.com/atticlab/go-smart-base/keypair"
 )
 
 var _ = Describe("AdministrativeOpBuilder Mutators", func() {
